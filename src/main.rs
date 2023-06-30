@@ -15,18 +15,18 @@ type DeviceId = u64;
 type DeviceAddress = SocketAddr;
 
 struct Group {
-    members: HashMap<DeviceId, DeviceAddress>,
+    joined_devices: HashMap<DeviceId, DeviceAddress>,
 }
 
 impl Group {
     pub fn new() -> Self {
         Self {
-            members: HashMap::new(),
+            joined_devices: HashMap::new(),
         }
     }
 
     pub fn add_new_member(&mut self, device_id: DeviceId, device_address: DeviceAddress) {
-        self.members.insert(device_id, device_address);
+        self.joined_devices.insert(device_id, device_address);
     }
 
     pub fn announce() -> io::Result<()> {
