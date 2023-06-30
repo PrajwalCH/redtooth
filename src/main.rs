@@ -25,7 +25,7 @@ impl Group {
         }
     }
 
-    pub fn add_new_member(&mut self, device_id: DeviceId, device_address: DeviceAddress) {
+    pub fn add_new_device(&mut self, device_id: DeviceId, device_address: DeviceAddress) {
         self.joined_devices.insert(device_id, device_address);
     }
 
@@ -86,7 +86,7 @@ fn main() -> io::Result<()> {
 
     loop {
         if let Ok(member) = receiver.recv() {
-            group.add_new_member(member.0, member.1);
+            group.add_new_device(member.0, member.1);
         }
     }
 }
