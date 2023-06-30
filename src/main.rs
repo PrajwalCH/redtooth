@@ -11,11 +11,11 @@ const MULTICAST_ADDRESS: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 251);
 const MULTICAST_PORT: u16 = 20581;
 const ANY_INTERFACE_ADDRESS: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
 
-type MemberId = u64;
+type DeviceId = u64;
 type MemberAddress = SocketAddr;
 
 struct Group {
-    members: HashMap<MemberId, MemberAddress>,
+    members: HashMap<DeviceId, MemberAddress>,
 }
 
 impl Group {
@@ -25,8 +25,8 @@ impl Group {
         }
     }
 
-    pub fn add_new_member(&mut self, member_id: MemberId, member_address: MemberAddress) {
-        self.members.insert(member_id, member_address);
+    pub fn add_new_member(&mut self, device_id: DeviceId, member_address: MemberAddress) {
+        self.members.insert(device_id, member_address);
     }
 
     pub fn announce() -> io::Result<()> {
@@ -40,7 +40,7 @@ impl Group {
         Ok(())
     }
 
-    pub fn listen_new_announcement(sender: &Sender<(MemberId, MemberAddress)>) -> io::Result<()> {
+    pub fn listen_new_announcement(sender: &Sender<(DeviceId, MemberAddress)>) -> io::Result<()> {
         let socket = UdpSocket::bind(("0.0.0.0", MULTICAST_PORT))?;
         // socket.set_read_timeout(Some(Duration::from_millis(20)))?;
         socket.join_multicast_v4(&MULTICAST_ADDRESS, &ANY_INTERFACE_ADDRESS)?;
@@ -59,16 +59,16 @@ impl Group {
             if inbox != "announcement".as_bytes() {
                 continue;
             }
-            let member_id = Self::generate_member_id(member_address);
-            if let Err(error) = sender.send((member_id, member_address)) {
+            let device_id = Self::generate_device_id(member_address);
+            if let Err(error) = sender.send((device_id, member_address)) {
                 eprintln!("[Group]: Couldn't send member id and address to channel: {error}");
                 continue;
             }
-            println!("[Group]: New announcement: [{member_id}]:[{member_address}]");
+            println!("[Group]: New announcement: [{device_id}]:[{member_address}]");
         }
     }
 
-    fn generate_member_id(member_address: impl Hash) -> MemberId {
+    fn generate_device_id(member_address: impl Hash) -> DeviceId {
         let mut hasher = DefaultHasher::new();
         member_address.hash(&mut hasher);
         hasher.finish()
@@ -76,7 +76,7 @@ impl Group {
 }
 
 fn main() -> io::Result<()> {
-    let (sender, receiver) = mpsc::channel::<(MemberId, MemberAddress)>();
+    let (sender, receiver) = mpsc::channel::<(DeviceId, MemberAddress)>();
     let builder = thread::Builder::new().name(String::from("announcer"));
     builder.spawn(move || Group::listen_new_announcement(&sender))?;
     // Announce self to other group server instances.
