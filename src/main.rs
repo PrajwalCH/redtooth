@@ -85,8 +85,8 @@ fn main() -> io::Result<()> {
     let mut group = Group::new();
 
     loop {
-        if let Ok(member) = receiver.recv() {
-            group.add_new_device(member.0, member.1);
+        if let Ok((device_id, device_address)) = receiver.recv() {
+            group.add_new_device(device_id, device_address);
         }
     }
 }
