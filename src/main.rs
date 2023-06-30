@@ -61,7 +61,7 @@ impl Group {
             }
             let device_id = Self::generate_device_id(device_address);
             if let Err(error) = sender.send((device_id, device_address)) {
-                eprintln!("[Group]: Couldn't send member id and address to channel: {error}");
+                eprintln!("[Group]: Couldn't send device id and address to channel: {error}");
                 continue;
             }
             println!("[Group]: New announcement: [{device_id}]:[{device_address}]");
