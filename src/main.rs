@@ -119,9 +119,7 @@ fn main() -> io::Result<()> {
     })?;
 
     loop {
-        // NOTE: `recv` blocks the current thread so, we can't send the data while we are waiting
-        //       to receive newly joined device sent from the `announcer` thread.
-        if let Ok((device_id, device_address)) = receiver.recv() {
+        if let Ok((device_id, device_address)) = receiver.try_recv() {
             group.add_new_device(device_id, device_address);
         }
 
