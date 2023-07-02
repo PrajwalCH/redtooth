@@ -5,6 +5,7 @@ use std::io::{self, Read, Write};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream, UdpSocket};
 use std::sync::mpsc::{self, Sender};
 use std::thread;
+use std::time::Duration;
 
 // Range between `224.0.0.0` to `224.0.0.250` is reserved or use by routing and maintenance
 // protocols inside a network.
@@ -130,5 +131,6 @@ fn main() -> io::Result<()> {
             let mut peer_stream = TcpStream::connect(peer_address)?;
             peer_stream.write_all("ping".as_bytes())?;
         }
+        thread::sleep(Duration::from_secs(2));
     }
 }
