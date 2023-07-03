@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::io;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
+use std::thread;
 
 // Range between `224.0.0.0` to `224.0.0.250` is reserved or use by routing and maintenance
 // protocols inside a network.
@@ -12,13 +13,14 @@ const MULTICAST_PORT: u16 = 20581;
 const ANY_INTERFACE_ADDRESS: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
 const TCP_PORT: u16 = 25802;
 
-pub type DeviceId = u64;
-pub type DeviceAddress = SocketAddr;
+type DeviceId = u64;
+type DeviceAddress = SocketAddr;
 
 pub struct Group {
     /// Current device address.
     pub device_address: DeviceAddress,
     pub joined_devices: HashMap<DeviceId, DeviceAddress>,
+    channel: Channel<(DeviceId, DeviceAddress)>,
 }
 
 impl Group {
@@ -26,11 +28,8 @@ impl Group {
         Self {
             device_address: DeviceAddress::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), TCP_PORT),
             joined_devices: HashMap::new(),
+            channel: Channel::new(),
         }
-    }
-
-    pub fn add_new_device(&mut self, device_id: DeviceId, device_address: DeviceAddress) {
-        self.joined_devices.insert(device_id, device_address);
     }
 
     /// Announces the current device to other instances of the group server.
@@ -45,9 +44,26 @@ impl Group {
         Ok(())
     }
 
+    pub fn add_new_device(&mut self, device_id: DeviceId, device_address: DeviceAddress) {
+        self.joined_devices.insert(device_id, device_address);
+    }
+
+    /// Attempts to return a discovered device on the local network.
+    pub fn try_get_discovered_device(&self) -> Result<(DeviceId, DeviceAddress), TryRecvError> {
+        self.channel.receiver.try_recv()
+    }
+
+    /// Starts a server for discovering devices on the local network.
+    pub fn start_local_discovery(&self) -> io::Result<()> {
+        let sender = self.channel.sender.clone();
+        let builder = thread::Builder::new().name(String::from("local discovery"));
+        builder.spawn(move || Group::discover_devices(sender))?;
+        Ok(())
+    }
+
     /// Starts listening for an **announcement** packet and sends the id and address of a discovered
     /// device through the channel's sender.
-    pub fn discover_devices(sender: &Sender<(DeviceId, DeviceAddress)>) -> io::Result<()> {
+    fn discover_devices(sender: Sender<(DeviceId, DeviceAddress)>) -> io::Result<()> {
         let socket = UdpSocket::bind(("0.0.0.0", MULTICAST_PORT))?;
         // socket.set_read_timeout(Some(Duration::from_millis(20)))?;
         socket.join_multicast_v4(&MULTICAST_ADDRESS, &ANY_INTERFACE_ADDRESS)?;
@@ -84,5 +100,17 @@ impl Group {
         let mut hasher = DefaultHasher::new();
         device_address.hash(&mut hasher);
         hasher.finish()
+    }
+}
+
+struct Channel<T> {
+    sender: Sender<T>,
+    receiver: Receiver<T>,
+}
+
+impl<T> Channel<T> {
+    pub fn new() -> Self {
+        let (sender, receiver) = mpsc::channel::<T>();
+        Self { sender, receiver }
     }
 }
