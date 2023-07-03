@@ -33,6 +33,7 @@ impl Group {
         self.joined_devices.insert(device_id, device_address);
     }
 
+    /// Announces the current device to other instances of the group server.
     pub fn announce() -> io::Result<()> {
         let socket = UdpSocket::bind("0.0.0.0:0")?;
         // Don't announce self to own group server.
