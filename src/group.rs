@@ -44,7 +44,9 @@ impl Group {
         Ok(())
     }
 
-    pub fn listen_new_announcement(sender: &Sender<(DeviceId, DeviceAddress)>) -> io::Result<()> {
+    /// Starts listening for an **announcement** packet and sends the id and address of a discovered
+    /// device through the channel's sender.
+    pub fn discover_devices(sender: &Sender<(DeviceId, DeviceAddress)>) -> io::Result<()> {
         let socket = UdpSocket::bind(("0.0.0.0", MULTICAST_PORT))?;
         // socket.set_read_timeout(Some(Duration::from_millis(20)))?;
         socket.join_multicast_v4(&MULTICAST_ADDRESS, &ANY_INTERFACE_ADDRESS)?;

@@ -10,7 +10,7 @@ use std::time::Duration;
 fn main() -> io::Result<()> {
     let (sender, receiver) = mpsc::channel::<(DeviceId, DeviceAddress)>();
     let builder = thread::Builder::new().name(String::from("announcer"));
-    builder.spawn(move || Group::listen_new_announcement(&sender))?;
+    builder.spawn(move || Group::discover_devices(&sender))?;
 
     let mut group = Group::new();
     // Announce self to other group server instances.
