@@ -44,6 +44,7 @@ impl Group {
         Ok(())
     }
 
+    /// Adds a new device to the list of joined devices.
     pub fn add_new_device(&mut self, device_id: DeviceId, device_address: DeviceAddress) {
         self.joined_devices.insert(device_id, device_address);
     }
