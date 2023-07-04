@@ -10,7 +10,7 @@ use crate::group::Group;
 fn main() -> io::Result<()> {
     let mut group = Group::new();
     group.start_local_discovery()?;
-    Group::announce()?;
+    group.announce()?;
 
     let builder = thread::Builder::new().name(String::from("data receiver"));
     let listener = TcpListener::bind(group.device_address)?;
