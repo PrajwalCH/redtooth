@@ -58,13 +58,13 @@ impl Group {
     pub fn start_local_discovery(&self) -> io::Result<()> {
         let sender = self.channel.sender.clone();
         let builder = thread::Builder::new().name(String::from("local discovery"));
-        builder.spawn(move || Group::discover_devices(sender))?;
+        builder.spawn(move || Group::discover_local_devices(sender))?;
         Ok(())
     }
 
-    /// Starts listening for an **announcement** packet and sends the id and address of a discovered
-    /// device through the channel's sender.
-    fn discover_devices(sender: Sender<(DeviceId, DeviceAddress)>) -> io::Result<()> {
+    /// Starts listening for an **announcement** packet on the local network and sends the id and
+    /// address of a discovered device through the channel's sender.
+    fn discover_local_devices(sender: Sender<(DeviceId, DeviceAddress)>) -> io::Result<()> {
         let socket = UdpSocket::bind(("0.0.0.0", MULTICAST_PORT))?;
         // socket.set_read_timeout(Some(Duration::from_millis(20)))?;
         socket.join_multicast_v4(&MULTICAST_ADDRESS, &ANY_INTERFACE_ADDRESS)?;
