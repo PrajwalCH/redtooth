@@ -1,4 +1,5 @@
 mod group;
+mod interface;
 
 use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -8,6 +9,8 @@ use std::time::Duration;
 use crate::group::Group;
 
 fn main() -> io::Result<()> {
+    dbg!(interface::local_ipv4_address());
+
     let mut group = Group::new();
     group.start_local_discovery()?;
     group.announce_current_device()?;
