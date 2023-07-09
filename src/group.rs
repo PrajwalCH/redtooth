@@ -27,7 +27,10 @@ pub struct Group {
 impl Group {
     pub fn new() -> Self {
         Self {
-            device_address: DeviceAddress::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), TCP_PORT),
+            device_address: DeviceAddress::new(
+                IpAddr::V4(interface::local_ipv4_address().unwrap_or(Ipv4Addr::UNSPECIFIED)),
+                TCP_PORT,
+            ),
             joined_devices: HashMap::new(),
             channel: Channel::new(),
         }
