@@ -1,12 +1,17 @@
 use std::net::{IpAddr, Ipv4Addr};
 use std::ptr;
 
-pub fn local_ipv4_address() -> Option<IpAddr> {
-    InterfaceAddresses::new()?.find(|ip_addr| {
-        let IpAddr::V4(addr) = ip_addr else {
-            return false;
+pub fn local_ipv4_address() -> Option<Ipv4Addr> {
+    InterfaceAddresses::new()?.find_map(|ip_address| {
+        let IpAddr::V4(address) = ip_address else {
+            return None;
         };
-        addr.is_private() && addr.octets().starts_with(&[192, 168])
+
+        if address.is_private() && address.octets().starts_with(&[192, 168]) {
+            Some(address)
+        } else {
+            None
+        }
     })
 }
 
