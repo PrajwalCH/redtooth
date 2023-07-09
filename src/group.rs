@@ -6,11 +6,12 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::thread;
 
+use crate::interface;
+
 // Range between `224.0.0.0` to `224.0.0.250` is reserved or use by routing and maintenance
 // protocols inside a network.
 const MULTICAST_ADDRESS: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 251);
 const MULTICAST_PORT: u16 = 20581;
-const ANY_INTERFACE_ADDRESS: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
 const TCP_PORT: u16 = 25802;
 
 type DeviceId = u64;
@@ -67,7 +68,7 @@ impl Group {
     fn discover_local_devices(sender: Sender<(DeviceId, DeviceAddress)>) -> io::Result<()> {
         let socket = UdpSocket::bind(("0.0.0.0", MULTICAST_PORT))?;
         // socket.set_read_timeout(Some(Duration::from_millis(20)))?;
-        socket.join_multicast_v4(&MULTICAST_ADDRESS, &ANY_INTERFACE_ADDRESS)?;
+        socket.join_multicast_v4(&MULTICAST_ADDRESS, &Ipv4Addr::UNSPECIFIED)?;
 
         println!(
             "[Group]: Listening for new announcement on: {}",
