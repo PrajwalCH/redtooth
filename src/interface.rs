@@ -73,11 +73,6 @@ pub fn local_ipv4_address() -> Option<Ipv4Addr> {
         let IpAddr::V4(address) = ip_address else {
             return None;
         };
-
-        if address.is_private() && address.octets().starts_with(&[192, 168]) {
-            Some(address)
-        } else {
-            None
-        }
+        (address.is_private() && address.octets().starts_with(&[192, 168])).then_some(address)
     })
 }
