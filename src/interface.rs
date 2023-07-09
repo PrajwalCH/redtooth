@@ -1,20 +1,6 @@
 use std::net::{IpAddr, Ipv4Addr};
 use std::ptr;
 
-pub fn local_ipv4_address() -> Option<Ipv4Addr> {
-    InterfaceAddresses::new()?.find_map(|ip_address| {
-        let IpAddr::V4(address) = ip_address else {
-            return None;
-        };
-
-        if address.is_private() && address.octets().starts_with(&[192, 168]) {
-            Some(address)
-        } else {
-            None
-        }
-    })
-}
-
 pub struct InterfaceAddresses {
     /// A linked list containing interfaces of the system.
     interfaces: *mut libc::ifaddrs,
@@ -80,4 +66,18 @@ impl Drop for InterfaceAddresses {
             libc::freeifaddrs(self.interfaces);
         }
     }
+}
+
+pub fn local_ipv4_address() -> Option<Ipv4Addr> {
+    InterfaceAddresses::new()?.find_map(|ip_address| {
+        let IpAddr::V4(address) = ip_address else {
+            return None;
+        };
+
+        if address.is_private() && address.octets().starts_with(&[192, 168]) {
+            Some(address)
+        } else {
+            None
+        }
+    })
 }
