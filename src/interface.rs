@@ -10,7 +10,7 @@ pub fn local_ipv4_address() -> Option<IpAddr> {
     })
 }
 
-struct InterfaceAddresses {
+pub struct InterfaceAddresses {
     /// A linked list containing interfaces of the system.
     interfaces: *mut libc::ifaddrs,
     next_interface: *mut libc::ifaddrs,
