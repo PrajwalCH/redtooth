@@ -31,10 +31,11 @@ impl InterfaceAddresses {
         })
     }
 
-    unsafe fn get_interface_ip_address(interface: *mut libc::ifaddrs) -> Option<IpAddr> {
-        let interface_address = (*interface).ifa_addr;
+    fn get_interface_ip_address(interface: *mut libc::ifaddrs) -> Option<IpAddr> {
+        let interface_address = unsafe { *interface }.ifa_addr;
+        let address_family = unsafe { *interface_address }.sa_family;
 
-        match (*interface_address).sa_family as libc::c_int {
+        match address_family as libc::c_int {
             libc::AF_INET => {
                 // Cast `sockaddr` to `sockaddr_in` to get the address bytes `u32`.
                 //
@@ -46,7 +47,7 @@ impl InterfaceAddresses {
                 //
                 // Without converting them into correct network byte order, the address would look
                 // like this `1.1.168.192` instead of `192.168.1.1`.
-                let address_bytes = (*socket_address).sin_addr.s_addr.to_be();
+                let address_bytes = unsafe { *socket_address }.sin_addr.s_addr.to_be();
                 Some(IpAddr::V4(Ipv4Addr::from(address_bytes)))
             }
             // Not using ipv6 (currently) and packet.
@@ -63,12 +64,8 @@ impl Iterator for InterfaceAddresses {
             return None;
         }
         let current_interface = self.next_interface;
-
-        unsafe {
-            // Get the next interface from the list.
-            self.next_interface = (*current_interface).ifa_next;
-            Self::get_interface_ip_address(current_interface).or_else(|| self.next())
-        }
+        self.next_interface = unsafe { *current_interface }.ifa_next;
+        Self::get_interface_ip_address(current_interface).or_else(|| self.next())
     }
 }
 
