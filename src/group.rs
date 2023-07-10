@@ -49,7 +49,7 @@ impl Group {
         // Don't announce self to own group server.
         socket.set_multicast_loop_v4(false)?;
 
-        let packet = format!("{}:{}", self.current_device.id, self.current_device.address);
+        let packet = format!("{};{}", self.current_device.id, self.current_device.address);
         socket.send_to(packet.as_bytes(), (MULTICAST_ADDRESS, MULTICAST_PORT))?;
         Ok(())
     }
@@ -108,7 +108,7 @@ impl Group {
     /// If the packet is not a valid UTF-8.
     fn parse_packet(packet: &[u8]) -> Option<Device> {
         let packet = String::from_utf8(packet.to_vec()).unwrap();
-        let mut content_iter = packet.split(':');
+        let mut content_iter = packet.split(';');
 
         let id = DeviceId::from_str(content_iter.next()?).ok()?;
         let address = DeviceAddress::from_str(content_iter.next()?).ok()?;
