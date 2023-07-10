@@ -14,7 +14,7 @@ fn main() -> io::Result<()> {
     group.announce_current_device()?;
 
     let builder = thread::Builder::new().name(String::from("data receiver"));
-    let listener = TcpListener::bind(group.device_address)?;
+    let listener = TcpListener::bind(group.current_device.address)?;
     println!("[Main]: Receiving data on: {}", listener.local_addr()?);
 
     builder.spawn(move || {
@@ -37,8 +37,8 @@ fn main() -> io::Result<()> {
     })?;
 
     loop {
-        if let Ok((device_id, device_address)) = group.try_get_discovered_device() {
-            group.add_new_device(device_id, device_address);
+        if let Ok(device) = group.try_get_discovered_device() {
+            group.add_new_device(device);
         }
 
         // Send ping message to all the devices.

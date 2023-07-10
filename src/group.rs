@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::io;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
+use std::str::FromStr;
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::thread;
 
@@ -18,19 +19,15 @@ type DeviceId = u64;
 type DeviceAddress = SocketAddr;
 
 pub struct Group {
-    /// Current device address.
-    pub device_address: DeviceAddress,
+    pub current_device: Device,
     pub joined_devices: HashMap<DeviceId, DeviceAddress>,
-    channel: Channel<(DeviceId, DeviceAddress)>,
+    channel: Channel<Device>,
 }
 
 impl Group {
     pub fn new() -> Self {
         Self {
-            device_address: DeviceAddress::new(
-                IpAddr::V4(interface::local_ipv4_address().unwrap_or(Ipv4Addr::UNSPECIFIED)),
-                TCP_PORT,
-            ),
+            current_device: Device::current(),
             joined_devices: HashMap::new(),
             channel: Channel::new(),
         }
@@ -41,20 +38,19 @@ impl Group {
         let socket = UdpSocket::bind("0.0.0.0:0")?;
         // Don't announce self to own group server.
         socket.set_multicast_loop_v4(false)?;
-        socket.send_to(
-            "announcement".as_bytes(),
-            (MULTICAST_ADDRESS, MULTICAST_PORT),
-        )?;
+
+        let packet = format!("{}:{}", self.current_device.id, self.current_device.address);
+        socket.send_to(packet.as_bytes(), (MULTICAST_ADDRESS, MULTICAST_PORT))?;
         Ok(())
     }
 
     /// Adds a new device to the list of joined devices.
-    pub fn add_new_device(&mut self, device_id: DeviceId, device_address: DeviceAddress) {
-        self.joined_devices.insert(device_id, device_address);
+    pub fn add_new_device(&mut self, device: Device) {
+        self.joined_devices.insert(device.id, device.address);
     }
 
     /// Attempts to return a discovered device on the local network.
-    pub fn try_get_discovered_device(&self) -> Result<(DeviceId, DeviceAddress), TryRecvError> {
+    pub fn try_get_discovered_device(&self) -> Result<Device, TryRecvError> {
         self.channel.receiver.try_recv()
     }
 
@@ -66,9 +62,9 @@ impl Group {
         Ok(())
     }
 
-    /// Starts listening for an **announcement** packet on the local network and sends the id and
-    /// address of a discovered device through the channel's sender.
-    fn discover_local_devices(sender: Sender<(DeviceId, DeviceAddress)>) -> io::Result<()> {
+    /// Starts listening for an **announcement** packet on the local network and sends discovered
+    /// device through the channel's sender.
+    fn discover_local_devices(sender: Sender<Device>) -> io::Result<()> {
         let socket = UdpSocket::bind(("0.0.0.0", MULTICAST_PORT))?;
         // socket.set_read_timeout(Some(Duration::from_millis(20)))?;
         socket.join_multicast_v4(&MULTICAST_ADDRESS, &Ipv4Addr::UNSPECIFIED)?;
@@ -79,32 +75,70 @@ impl Group {
         );
 
         loop {
-            let mut inbox = [0; 12];
-            let Ok((_, mut device_address)) = socket.recv_from(&mut inbox) else {
+            let mut packet = Vec::new();
+            let Ok((_, announcement_address)) = socket.recv_from(&mut packet) else {
+                continue;
+            };
+            let Some(mut device) = Self::parse_packet(packet) else {
+                eprintln!("[Group]: Received invalid formatted packet from {announcement_address}");
                 continue;
             };
 
-            // All the devices receive data on a fixed `TCP_PORT` but the address currently we are
-            // receiving may have different port because they announce themselves using the port
-            // chosen by OS or a specifically `UNSPECIFIED` port.
-            device_address.set_port(TCP_PORT);
-
-            if inbox != "announcement".as_bytes() {
-                continue;
+            // If the address present in a packet is unspecified (0.0.0.0), use the address from
+            // which the device announces itself.
+            if device.address.ip().is_unspecified() {
+                device.address.set_ip(announcement_address.ip());
             }
-            let device_id = Self::generate_device_id(device_address);
-            if let Err(error) = sender.send((device_id, device_address)) {
+            println!(
+                "[Group]: New announcement: [{}]:[{}]",
+                device.id, device.address
+            );
+
+            if let Err(error) = sender.send(device) {
                 eprintln!("[Group]: Couldn't send device id and address to channel: {error}");
                 continue;
             }
-            println!("[Group]: New announcement: [{device_id}]:[{device_address}]");
         }
     }
 
-    fn generate_device_id(device_address: impl Hash) -> DeviceId {
-        let mut hasher = DefaultHasher::new();
-        device_address.hash(&mut hasher);
-        hasher.finish()
+    /// Parses the packet and returns a [`Device`] containing the id and address.
+    ///
+    /// ## Panics
+    ///
+    /// If the packet is not a valid UTF-8.
+    fn parse_packet(packet: Vec<u8>) -> Option<Device> {
+        let packet = String::from_utf8(packet).unwrap();
+        let mut content_iter = packet.split(':');
+
+        let id = DeviceId::from_str(content_iter.next()?).ok()?;
+        let address = DeviceAddress::from_str(content_iter.next()?).ok()?;
+        Some(Device::new(id, address))
+    }
+}
+
+pub struct Device {
+    pub id: DeviceId,
+    pub address: DeviceAddress,
+}
+
+impl Device {
+    pub fn new(id: DeviceId, address: DeviceAddress) -> Self {
+        Self { id, address }
+    }
+
+    /// Creates a new instance representing current device.
+    pub fn current() -> Self {
+        let address = DeviceAddress::new(
+            IpAddr::V4(interface::local_ipv4_address().unwrap_or(Ipv4Addr::UNSPECIFIED)),
+            TCP_PORT,
+        );
+        let id = {
+            let mut hasher = DefaultHasher::new();
+            address.hash(&mut hasher);
+            hasher.finish()
+        };
+
+        Self { id, address }
     }
 }
 
