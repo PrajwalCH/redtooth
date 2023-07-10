@@ -33,6 +33,16 @@ impl Group {
         }
     }
 
+    /// Adds a new device to the list of joined devices.
+    pub fn add_new_device(&mut self, device: Device) {
+        self.joined_devices.insert(device.id, device.address);
+    }
+
+    /// Attempts to return a discovered device on the local network.
+    pub fn try_get_discovered_device(&self) -> Result<Device, TryRecvError> {
+        self.channel.receiver.try_recv()
+    }
+
     /// Announces the current device to other instances of the group server.
     pub fn announce_current_device(&self) -> io::Result<()> {
         let socket = UdpSocket::bind("0.0.0.0:0")?;
@@ -42,16 +52,6 @@ impl Group {
         let packet = format!("{}:{}", self.current_device.id, self.current_device.address);
         socket.send_to(packet.as_bytes(), (MULTICAST_ADDRESS, MULTICAST_PORT))?;
         Ok(())
-    }
-
-    /// Adds a new device to the list of joined devices.
-    pub fn add_new_device(&mut self, device: Device) {
-        self.joined_devices.insert(device.id, device.address);
-    }
-
-    /// Attempts to return a discovered device on the local network.
-    pub fn try_get_discovered_device(&self) -> Result<Device, TryRecvError> {
-        self.channel.receiver.try_recv()
     }
 
     /// Starts a server for discovering devices on the local network.
