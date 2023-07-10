@@ -75,11 +75,11 @@ impl Group {
         );
 
         loop {
-            let mut packet = Vec::new();
-            let Ok((_, announcement_address)) = socket.recv_from(&mut packet) else {
+            let mut packet = [0; 4096];
+            let Ok((packet_len, announcement_address)) = socket.recv_from(&mut packet) else {
                 continue;
             };
-            let Some(mut device) = Self::parse_packet(packet) else {
+            let Some(mut device) = Self::parse_packet(&packet[..packet_len]) else {
                 eprintln!("[Group]: Received invalid formatted packet from {announcement_address}");
                 continue;
             };
@@ -106,8 +106,8 @@ impl Group {
     /// ## Panics
     ///
     /// If the packet is not a valid UTF-8.
-    fn parse_packet(packet: Vec<u8>) -> Option<Device> {
-        let packet = String::from_utf8(packet).unwrap();
+    fn parse_packet(packet: &[u8]) -> Option<Device> {
+        let packet = String::from_utf8(packet.to_vec()).unwrap();
         let mut content_iter = packet.split(':');
 
         let id = DeviceId::from_str(content_iter.next()?).ok()?;
