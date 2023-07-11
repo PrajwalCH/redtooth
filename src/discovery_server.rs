@@ -102,8 +102,8 @@ impl DiscoveryServer {
         let packet = String::from_utf8(packet.to_vec()).unwrap();
         let mut content_iter = packet.split(';');
 
-        let id = DeviceId::from_str(content_iter.next()?).ok()?;
-        let address = DeviceAddress::from_str(content_iter.next()?).ok()?;
+        let id = content_iter.next()?.parse::<DeviceId>().ok()?;
+        let address = content_iter.next()?.parse::<DeviceAddress>().ok()?;
         Some((id, address))
     }
 }
