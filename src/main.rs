@@ -18,11 +18,7 @@ fn main() -> io::Result<()> {
     discovery_server.start_local_discovery()?;
     discovery_server.announce_device(current_device.id, current_device.address)?;
 
-    loop {
-        if let Ok((id, address)) = discovery_server.try_get_discovered_device() {
-            discovery_server.add_new_device(id, address);
-        }
-
+    while discovery_server.add_discovered_device() {
         // Send ping message to all the devices.
         for peer_address in discovery_server.discovered_devices.values() {
             println!("[Main]: Sending `ping` to {peer_address}");
@@ -32,4 +28,5 @@ fn main() -> io::Result<()> {
         }
         thread::sleep(Duration::from_secs(2));
     }
+    Ok(())
 }

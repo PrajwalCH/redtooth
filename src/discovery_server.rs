@@ -27,14 +27,23 @@ impl DiscoveryServer {
         }
     }
 
+    /// Adds the discovered device from the local server to the list of discovered devices.
+    ///
+    /// Returns `false` if the local server disconnects before receiving a device; otherwise,
+    /// returns `true`.
+    pub fn add_discovered_device(&mut self) -> bool {
+        match self.channel.receiver.try_recv() {
+            Ok((id, address)) => {
+                self.add_new_device(id, address);
+                true
+            }
+            Err(e) => e != TryRecvError::Disconnected,
+        }
+    }
+
     /// Adds a new device to the list of discovered devices.
     pub fn add_new_device(&mut self, id: DeviceId, address: DeviceAddress) {
         self.discovered_devices.insert(id, address);
-    }
-
-    /// Attempts to return a discovered device on the local network.
-    pub fn try_get_discovered_device(&self) -> Result<DiscoveredDevice, TryRecvError> {
-        self.channel.receiver.try_recv()
     }
 
     /// Announces the device to other instances of the server.
