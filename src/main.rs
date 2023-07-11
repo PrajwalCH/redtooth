@@ -7,15 +7,17 @@ use std::net::{TcpListener, TcpStream};
 use std::thread;
 use std::time::Duration;
 
+use crate::device::Device;
 use crate::group::Group;
 
 fn main() -> io::Result<()> {
+    let current_device = Device::new();
     let mut group = Group::new();
     group.start_local_discovery()?;
-    group.announce_current_device()?;
+    group.announce_device(current_device.id, current_device.address)?;
 
     let builder = thread::Builder::new().name(String::from("data receiver"));
-    let listener = TcpListener::bind(group.current_device.address)?;
+    let listener = TcpListener::bind(current_device.address)?;
     println!("[Main]: Receiving data on: {}", listener.local_addr()?);
 
     builder.spawn(move || {
@@ -38,12 +40,12 @@ fn main() -> io::Result<()> {
     })?;
 
     loop {
-        if let Ok(device) = group.try_get_discovered_device() {
-            group.add_new_device(device);
+        if let Ok((id, address)) = group.try_get_discovered_device() {
+            group.add_new_device(id, address);
         }
 
         // Send ping message to all the devices.
-        for peer_address in group.joined_devices.values() {
+        for peer_address in group.discovered_devices.values() {
             println!("[Main]: Sending `ping` to {peer_address}");
 
             let mut peer_stream = TcpStream::connect(peer_address)?;
