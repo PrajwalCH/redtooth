@@ -15,12 +15,12 @@ pub type DiscoveredDevice = (DeviceId, DeviceAddress);
 const MULTICAST_ADDRESS: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 251);
 const MULTICAST_PORT: u16 = 20581;
 
-pub struct Group {
+pub struct DiscoveryServer {
     channel: Channel<DiscoveredDevice>,
     pub discovered_devices: HashMap<DeviceId, DeviceAddress>,
 }
 
-impl Group {
+impl DiscoveryServer {
     pub fn new() -> Self {
         Self {
             discovered_devices: HashMap::new(),
@@ -38,10 +38,10 @@ impl Group {
         self.channel.receiver.try_recv()
     }
 
-    /// Announces the device to other instances of the group server.
+    /// Announces the device to other instances of the server.
     pub fn announce_device(&self, id: DeviceId, address: DeviceAddress) -> io::Result<()> {
         let socket = UdpSocket::bind("0.0.0.0:0")?;
-        // Don't announce self to own group server.
+        // Don't announce to current instance of the server.
         socket.set_multicast_loop_v4(false)?;
 
         let packet = format!("{};{}", id, address);
@@ -53,7 +53,7 @@ impl Group {
     pub fn start_local_discovery(&self) -> io::Result<()> {
         let sender = self.channel.sender.clone();
         let builder = thread::Builder::new().name(String::from("local discovery"));
-        builder.spawn(move || Group::discover_local_devices(sender))?;
+        builder.spawn(move || DiscoveryServer::discover_local_devices(sender))?;
         Ok(())
     }
 
