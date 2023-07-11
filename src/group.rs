@@ -28,7 +28,7 @@ impl Group {
         }
     }
 
-    /// Adds a new device to the list of joined devices.
+    /// Adds a new device to the list of discovered devices.
     pub fn add_new_device(&mut self, id: DeviceId, address: DeviceAddress) {
         self.discovered_devices.insert(id, address);
     }
