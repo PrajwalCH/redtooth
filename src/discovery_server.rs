@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::io;
 use std::net::{Ipv4Addr, UdpSocket};
-use std::str::FromStr;
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::thread;
 
