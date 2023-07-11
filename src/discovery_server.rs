@@ -22,8 +22,8 @@ pub struct DiscoveryServer {
 impl DiscoveryServer {
     pub fn new() -> Self {
         Self {
-            discovered_devices: HashMap::new(),
             channel: Channel::new(),
+            discovered_devices: HashMap::new(),
         }
     }
 
