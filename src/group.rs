@@ -1,26 +1,20 @@
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
 use std::io;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket};
+use std::net::{Ipv4Addr, UdpSocket};
 use std::str::FromStr;
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::thread;
 
-use crate::interface;
+use crate::device::{Address, Device, Id};
 
 // Range between `224.0.0.0` to `224.0.0.250` is reserved or use by routing and maintenance
 // protocols inside a network.
 const MULTICAST_ADDRESS: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 251);
 const MULTICAST_PORT: u16 = 20581;
-const TCP_PORT: u16 = 25802;
-
-type DeviceId = u64;
-type DeviceAddress = SocketAddr;
 
 pub struct Group {
     pub current_device: Device,
-    pub joined_devices: HashMap<DeviceId, DeviceAddress>,
+    pub joined_devices: HashMap<Id, Address>,
     channel: Channel<Device>,
 }
 
@@ -110,35 +104,9 @@ impl Group {
         let packet = String::from_utf8(packet.to_vec()).unwrap();
         let mut content_iter = packet.split(';');
 
-        let id = DeviceId::from_str(content_iter.next()?).ok()?;
-        let address = DeviceAddress::from_str(content_iter.next()?).ok()?;
+        let id = Id::from_str(content_iter.next()?).ok()?;
+        let address = Address::from_str(content_iter.next()?).ok()?;
         Some(Device::new(id, address))
-    }
-}
-
-pub struct Device {
-    pub id: DeviceId,
-    pub address: DeviceAddress,
-}
-
-impl Device {
-    pub fn new(id: DeviceId, address: DeviceAddress) -> Self {
-        Self { id, address }
-    }
-
-    /// Creates a new instance representing current device.
-    pub fn current() -> Self {
-        let address = DeviceAddress::new(
-            IpAddr::V4(interface::local_ipv4_address().unwrap_or(Ipv4Addr::UNSPECIFIED)),
-            TCP_PORT,
-        );
-        let id = {
-            let mut hasher = DefaultHasher::new();
-            address.hash(&mut hasher);
-            hasher.finish()
-        };
-
-        Self { id, address }
     }
 }
 

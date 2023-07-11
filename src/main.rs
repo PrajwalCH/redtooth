@@ -1,3 +1,4 @@
+mod device;
 mod group;
 mod interface;
 
