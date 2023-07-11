@@ -93,7 +93,7 @@ impl DiscoveryServer {
         }
     }
 
-    /// Parses the packet and returns a [`Device`] containing the id and address.
+    /// Parses the packet and returns a [`DiscoveredDevice`] containing the id and address.
     ///
     /// ## Panics
     ///
