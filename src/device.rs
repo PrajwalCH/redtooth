@@ -1,9 +1,11 @@
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::io::{self, Read};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener};
 use std::thread;
 
+use crate::discovery_server::DiscoveryServer;
 use crate::interface;
 
 const TCP_PORT: u16 = 25802;
@@ -12,8 +14,10 @@ pub type Id = u64;
 pub type Address = SocketAddr;
 
 pub struct Device {
-    pub id: Id,
-    pub address: Address,
+    id: Id,
+    address: Address,
+    discovery_server: DiscoveryServer,
+    discovered_devices: HashMap<Id, Address>,
 }
 
 impl Device {
@@ -29,7 +33,27 @@ impl Device {
             hasher.finish()
         };
 
-        Self { id, address }
+        Self {
+            id,
+            address,
+            discovery_server: DiscoveryServer::new(),
+            discovered_devices: HashMap::new(),
+        }
+    }
+
+    /// Starts the main event loop.
+    pub fn run(&mut self) -> io::Result<()> {
+        self.start_data_receiver()?;
+
+        #[rustfmt::skip]
+        self.discovery_server.announce_device(self.id, self.address)?;
+        self.discovery_server.start_local_discovery()?;
+
+        loop {
+            if let Ok((id, address)) = self.discovery_server.try_recv_discovered_device() {
+                self.discovered_devices.insert(id, address);
+            }
+        }
     }
 
     /// Starts a TCP server for receiving data.
