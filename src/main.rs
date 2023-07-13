@@ -1,10 +1,10 @@
-mod device;
+mod app;
 mod discovery_server;
 mod interface;
 
-use crate::device::Device;
+use crate::app::App;
 
 fn main() -> std::io::Result<()> {
-    let mut current_device = Device::new();
-    current_device.run()
+    let mut app = App::new();
+    app.run()
 }
