@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::io::{self, Read};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener};
+use std::net::{self, SocketAddr};
 use std::sync::mpsc::{self, Receiver, RecvError, SendError, Sender};
 use std::thread;
 
@@ -23,16 +23,11 @@ pub struct App {
 impl App {
     /// Creates a new instance representing current device.
     pub fn new() -> Self {
-        let device_address = DeviceAddress::new(
-            IpAddr::V4(interface::local_ipv4_address().unwrap_or(Ipv4Addr::UNSPECIFIED)),
-            TCP_PORT,
-        );
-
         let (event_emitter, event_listener) = event();
 
         Self {
             device_id: generate_device_id(),
-            device_address,
+            device_address: get_device_address(),
             event_emitter,
             event_listener,
             discovered_devices: HashMap::new(),
@@ -60,6 +55,8 @@ impl App {
 
     /// Starts a TCP server for receiving data.
     pub fn start_data_receiver(&self) -> io::Result<()> {
+        use net::TcpListener;
+
         let builder = thread::Builder::new().name(String::from("data receiver"));
         let listener = TcpListener::bind(self.device_address)?;
         println!("[Me]: Receiving data on: {}", listener.local_addr()?);
@@ -131,6 +128,13 @@ fn generate_device_id() -> DeviceID {
     let mut hasher = DefaultHasher::new();
     Instant::now().hash(&mut hasher);
     hasher.finish()
+}
+
+fn get_device_address() -> DeviceAddress {
+    use net::{IpAddr, Ipv4Addr};
+
+    let ip_addr = IpAddr::V4(interface::local_ipv4_address().unwrap_or(Ipv4Addr::UNSPECIFIED));
+    DeviceAddress::new(ip_addr, TCP_PORT)
 }
 
 fn event() -> (EventEmitter, EventListener) {
