@@ -1,6 +1,4 @@
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
 use std::io::{self, Read};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener};
 use std::sync::mpsc::{self, Receiver, RecvError, SendError, Sender};
@@ -11,15 +9,15 @@ use crate::interface;
 
 const TCP_PORT: u16 = 25802;
 
-pub type DeviceId = u64;
+pub type DeviceID = u64;
 pub type DeviceAddress = SocketAddr;
 
 pub struct App {
-    device_id: DeviceId,
+    device_id: DeviceID,
     device_address: DeviceAddress,
     event_emitter: EventEmitter,
     event_listener: EventListener,
-    discovered_devices: HashMap<DeviceId, DeviceAddress>,
+    discovered_devices: HashMap<DeviceID, DeviceAddress>,
 }
 
 impl App {
@@ -29,16 +27,11 @@ impl App {
             IpAddr::V4(interface::local_ipv4_address().unwrap_or(Ipv4Addr::UNSPECIFIED)),
             TCP_PORT,
         );
-        let device_id = {
-            let mut hasher = DefaultHasher::new();
-            device_address.hash(&mut hasher);
-            hasher.finish()
-        };
 
         let (event_emitter, event_listener) = event();
 
         Self {
-            device_id,
+            device_id: generate_device_id(),
             device_address,
             event_emitter,
             event_listener,
@@ -94,7 +87,7 @@ impl App {
 }
 
 pub enum Event {
-    DiscoveredNewDevice((DeviceId, DeviceAddress)),
+    DiscoveredNewDevice((DeviceID, DeviceAddress)),
 }
 
 #[derive(Clone)]
@@ -128,6 +121,16 @@ impl EventListener {
     // pub fn try_listen(&self) -> Result<Event, TryRecvError> {
     //     self.receiver.try_recv()
     // }
+}
+
+fn generate_device_id() -> DeviceID {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    use std::time::Instant;
+
+    let mut hasher = DefaultHasher::new();
+    Instant::now().hash(&mut hasher);
+    hasher.finish()
 }
 
 fn event() -> (EventEmitter, EventListener) {

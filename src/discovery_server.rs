@@ -3,7 +3,7 @@ use std::net::{Ipv4Addr, UdpSocket};
 use std::thread;
 
 use crate::app::DeviceAddress;
-use crate::app::DeviceId;
+use crate::app::DeviceID;
 use crate::app::Event;
 use crate::app::EventEmitter;
 
@@ -13,7 +13,7 @@ const MULTICAST_ADDRESS: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 251);
 const MULTICAST_PORT: u16 = 20581;
 
 /// Announces the device to other instances of the server.
-pub fn announce_device(id: DeviceId, address: DeviceAddress) -> io::Result<()> {
+pub fn announce_device(id: DeviceID, address: DeviceAddress) -> io::Result<()> {
     let socket = UdpSocket::bind("0.0.0.0:0")?;
     // Don't announce to current instance of the server.
     socket.set_multicast_loop_v4(false)?;
@@ -71,11 +71,11 @@ fn discover_local_devices(event_emitter: EventEmitter) -> io::Result<()> {
 /// ## Panics
 ///
 /// If the packet is not a valid UTF-8.
-fn parse_packet(packet: &[u8]) -> Option<(DeviceId, DeviceAddress)> {
+fn parse_packet(packet: &[u8]) -> Option<(DeviceID, DeviceAddress)> {
     let packet = String::from_utf8(packet.to_vec()).unwrap();
     let mut content_iter = packet.split(';');
 
-    let id = content_iter.next()?.parse::<DeviceId>().ok()?;
+    let id = content_iter.next()?.parse::<DeviceID>().ok()?;
     let address = content_iter.next()?.parse::<DeviceAddress>().ok()?;
     Some((id, address))
 }
