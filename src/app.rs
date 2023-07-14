@@ -43,7 +43,7 @@ impl App {
                 };
 
             match event {
-                Event::DiscoveredNewDevice((id, address)) => {
+                Event::AddNewDevice((id, address)) => {
                     self.discovered_devices.insert(id, address);
                 }
                 Event::PingAll => {
@@ -90,7 +90,8 @@ impl App {
 }
 
 pub enum Event {
-    DiscoveredNewDevice((DeviceID, DeviceAddress)),
+    /// Adds a new device to the list of discovered devices.
+    AddNewDevice((DeviceID, DeviceAddress)),
     /// Send ping message to all the devices.
     PingAll,
 }
