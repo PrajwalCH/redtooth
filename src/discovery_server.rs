@@ -57,7 +57,7 @@ fn discover_local_devices(event_emitter: EventEmitter) -> io::Result<()> {
         if address.ip().is_unspecified() {
             address.set_ip(announcement_address.ip());
         }
-        println!("[Group]: New announcement: [{id}]:[{address}]",);
+        println!("[Group]: New announcement: [{id}]:[{address}]");
 
         if let Err(error) = event_emitter.emit(Event::AddNewDevice((id, address))) {
             eprintln!("[Group]: Couldn't send device id and address to channel: {error}");
