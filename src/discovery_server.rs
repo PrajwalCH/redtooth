@@ -30,8 +30,8 @@ pub fn start_local_discovery(event_emitter: EventEmitter) -> io::Result<()> {
     Ok(())
 }
 
-/// Starts listening for an **announcement** packet on the local network and sends discovered
-/// device through the channel's sender.
+/// Starts listening for an **announcement** packet on the local network and emits the event
+/// when new device is discovered.
 fn discover_local_devices(event_emitter: EventEmitter) -> io::Result<()> {
     let socket = UdpSocket::bind(("0.0.0.0", MULTICAST_PORT))?;
     // socket.set_read_timeout(Some(Duration::from_millis(20)))?;
