@@ -2,10 +2,10 @@ use std::io;
 use std::net::{Ipv4Addr, UdpSocket};
 use std::thread;
 
-use crate::app::DeviceAddress;
-use crate::app::DeviceID;
 use crate::app::Event;
 use crate::app::EventEmitter;
+use crate::device::DeviceAddress;
+use crate::device::DeviceID;
 
 // Range between `224.0.0.0` to `224.0.0.250` is reserved or use by routing and maintenance
 // protocols inside a network.
