@@ -1,8 +1,8 @@
 use std::collections::HashMap;
-use std::io::{self, Read};
-use std::net::TcpListener;
+use std::io::{self, Read, Write};
+use std::net::{TcpListener, TcpStream};
 use std::sync::mpsc::{self, Receiver, RecvError, SendError, Sender};
-use std::thread;
+use std::thread::Builder as ThreadBuilder;
 
 use crate::device::{self, DeviceAddress, DeviceID};
 use crate::discovery_server;
@@ -30,27 +30,40 @@ impl App {
     }
 
     /// Starts the main event loop.
-    pub fn run(&mut self) -> io::Result<()> {
+    pub fn run(mut self) -> io::Result<()> {
         self.start_data_receiver()?;
         discovery_server::announce_device(self.device_id, self.device_address)?;
-        discovery_server::start_local_discovery(self.event_emitter.clone())?;
+        discovery_server::start_local_discovery(self.event_emitter())?;
 
-        loop {
+        let builder = ThreadBuilder::new().name(String::from("event loop"));
+
+        builder.spawn(move || loop {
             let Ok(event) = self.event_listener.listen() else {
-                continue;
-            };
+                    continue;
+                };
 
             match event {
                 Event::DiscoveredNewDevice((id, address)) => {
-                    self.discovered_devices.insert(id, address)
+                    self.discovered_devices.insert(id, address);
+                }
+                Event::PingAll => {
+                    for device_address in self.discovered_devices.values() {
+                        let mut device_stream = TcpStream::connect(device_address).unwrap();
+                        device_stream.write_all("ping".as_bytes()).unwrap();
+                    }
                 }
             };
-        }
+        })?;
+        Ok(())
+    }
+
+    pub fn event_emitter(&self) -> EventEmitter {
+        self.event_emitter.clone()
     }
 
     /// Starts a TCP server for receiving data.
     pub fn start_data_receiver(&self) -> io::Result<()> {
-        let builder = thread::Builder::new().name(String::from("data receiver"));
+        let builder = ThreadBuilder::new().name(String::from("data receiver"));
         let listener = TcpListener::bind(self.device_address)?;
         println!("[Me]: Receiving data on: {}", listener.local_addr()?);
 
@@ -78,6 +91,8 @@ impl App {
 
 pub enum Event {
     DiscoveredNewDevice((DeviceID, DeviceAddress)),
+    /// Send ping message to all the devices.
+    PingAll,
 }
 
 #[derive(Clone)]
