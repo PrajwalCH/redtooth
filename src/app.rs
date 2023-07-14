@@ -92,7 +92,7 @@ impl App {
 pub enum Event {
     /// Adds a new device to the list of discovered devices.
     AddNewDevice((DeviceID, DeviceAddress)),
-    /// Send ping message to all the devices.
+    /// Sends a ping message to all the devices.
     PingAll,
 }
 
