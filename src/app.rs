@@ -53,6 +53,7 @@ impl App {
         }
     }
 
+    /// Returns the [`EventEmitter`] that can be used to send events to application's event loop.
     pub fn event_emitter(&self) -> EventEmitter {
         EventEmitter(self.event_channel.sender.clone())
     }
