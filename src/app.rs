@@ -17,8 +17,8 @@ pub struct App {
 
 impl App {
     /// Creates a new instance representing current device.
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> App {
+        App {
             device_id: device::id(),
             device_address: device::address(),
             event_channel: EventChannel::new(),
