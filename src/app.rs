@@ -26,14 +26,14 @@ impl App {
     }
 
     /// Starts the main event loop.
-    pub fn run(mut self) -> io::Result<()> {
+    ///
+    /// This function always blocks the current thread.
+    pub fn run(&mut self) -> io::Result<()> {
         self.start_data_receiver()?;
         discovery_server::announce_device(self.device_id, self.device_address)?;
         discovery_server::start_local_discovery(self.event_emitter())?;
 
-        let builder = ThreadBuilder::new().name(String::from("event loop"));
-
-        builder.spawn(move || loop {
+        loop {
             // SAFETY: Event receiving can only fail if all event senders are disconnected, which is
             // not possible since we contain the one sender.
             let event = self.event_channel.receiver.recv().unwrap();
@@ -49,8 +49,7 @@ impl App {
                     }
                 }
             };
-        })?;
-        Ok(())
+        }
     }
 
     pub fn event_emitter(&self) -> EventEmitter {
