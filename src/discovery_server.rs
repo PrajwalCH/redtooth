@@ -60,7 +60,7 @@ fn discover_local_devices(event_emitter: EventEmitter) -> io::Result<()> {
         println!("[Group]: New announcement: [{id}]:[{address}]");
 
         if let Err(error) = event_emitter.emit(Event::AddNewDevice((id, address))) {
-            eprintln!("[Group]: Couldn't send device id and address to channel: {error}");
+            eprintln!("[Group]: Couldn't emit event: {error}");
             continue;
         }
     }
