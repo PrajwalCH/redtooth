@@ -10,21 +10,17 @@ use crate::discovery_server;
 pub struct App {
     device_id: DeviceID,
     device_address: DeviceAddress,
-    event_sender: Sender<Event>,
-    event_receiver: Receiver<Event>,
+    event_channel: EventChannel,
     discovered_devices: HashMap<DeviceID, DeviceAddress>,
 }
 
 impl App {
     /// Creates a new instance representing current device.
     pub fn new() -> Self {
-        let (sender, receiver) = mpsc::channel::<Event>();
-
         Self {
             device_id: device::id(),
             device_address: device::address(),
-            event_sender: sender,
-            event_receiver: receiver,
+            event_channel: EventChannel::new(),
             discovered_devices: HashMap::new(),
         }
     }
@@ -40,7 +36,7 @@ impl App {
         builder.spawn(move || loop {
             // SAFETY: Event receiving can only fail if all event senders are disconnected, which is
             // not possible since we contain the one sender.
-            let event = self.event_receiver.recv().unwrap();
+            let event = self.event_channel.receiver.recv().unwrap();
 
             match event {
                 Event::AddNewDevice((id, address)) => {
@@ -58,7 +54,7 @@ impl App {
     }
 
     pub fn event_emitter(&self) -> EventEmitter {
-        EventEmitter(self.event_sender.clone())
+        EventEmitter(self.event_channel.sender.clone())
     }
 
     /// Starts a TCP server for receiving data.
@@ -86,6 +82,18 @@ impl App {
             }
         })?;
         Ok(())
+    }
+}
+
+struct EventChannel {
+    sender: Sender<Event>,
+    receiver: Receiver<Event>,
+}
+
+impl EventChannel {
+    pub fn new() -> EventChannel {
+        let (sender, receiver) = mpsc::channel::<Event>();
+        EventChannel { sender, receiver }
     }
 }
 
