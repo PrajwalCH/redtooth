@@ -10,7 +10,7 @@ use crate::discovery_server;
 pub struct App {
     device_id: DeviceID,
     device_address: DeviceAddress,
-    event_emitter: EventEmitter,
+    event_sender: Sender<Event>,
     event_listener: EventListener,
     discovered_devices: HashMap<DeviceID, DeviceAddress>,
 }
@@ -23,7 +23,7 @@ impl App {
         Self {
             device_id: device::id(),
             device_address: device::address(),
-            event_emitter: EventEmitter::new(sender),
+            event_sender: sender,
             event_listener: EventListener::new(receiver),
             discovered_devices: HashMap::new(),
         }
@@ -38,8 +38,8 @@ impl App {
         let builder = ThreadBuilder::new().name(String::from("event loop"));
 
         builder.spawn(move || loop {
-            // SAFETY: Listening can only fail if all event emitters are disconnected,
-            // which is not possible since we contain the one emitter.
+            // SAFETY: Listening can only fail if all event senders are disconnected,
+            // which is not possible since we contain the one sender.
             let event = self.event_listener.listen().unwrap();
 
             match event {
@@ -58,7 +58,7 @@ impl App {
     }
 
     pub fn event_emitter(&self) -> EventEmitter {
-        self.event_emitter.clone()
+        EventEmitter(self.event_sender.clone())
     }
 
     /// Starts a TCP server for receiving data.
@@ -98,17 +98,11 @@ pub enum Event {
 }
 
 #[derive(Clone)]
-pub struct EventEmitter {
-    sender: Sender<Event>,
-}
+pub struct EventEmitter(Sender<Event>);
 
 impl EventEmitter {
-    pub fn new(sender: Sender<Event>) -> Self {
-        Self { sender }
-    }
-
     pub fn emit(&self, event: Event) {
-        if let Err(SendError(event)) = self.sender.send(event) {
+        if let Err(SendError(event)) = self.0.send(event) {
             eprintln!("[event]: Failed to emit {event:?} due to listener being disconnected");
         }
     }
