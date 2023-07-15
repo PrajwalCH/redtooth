@@ -39,8 +39,8 @@ impl App {
 
         builder.spawn(move || loop {
             let Ok(event) = self.event_listener.listen() else {
-                    continue;
-                };
+                continue;
+            };
 
             match event {
                 Event::AddNewDevice((id, address)) => {
