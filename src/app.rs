@@ -89,6 +89,7 @@ impl App {
     }
 }
 
+#[derive(Debug)]
 pub enum Event {
     /// Adds a new device to the list of discovered devices.
     AddNewDevice((DeviceID, DeviceAddress)),
@@ -106,8 +107,10 @@ impl EventEmitter {
         Self { sender }
     }
 
-    pub fn emit(&self, event: Event) -> Result<(), SendError<Event>> {
-        self.sender.send(event)
+    pub fn emit(&self, event: Event) {
+        if let Err(SendError(event)) = self.sender.send(event) {
+            eprintln!("[event]: Failed to emit {event:?} due to listener being disconnected");
+        }
     }
 }
 
