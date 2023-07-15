@@ -2,7 +2,7 @@
 macro_rules! logln {
     () => {};
     ($($arg:tt)*) => {
-        println!("[{}]: {}", module_path!(), format_args!($($arg)*));
+        println!("[{}]: {}", module_path!(), format_args!($($arg)*))
     };
 }
 
@@ -10,6 +10,6 @@ macro_rules! logln {
 macro_rules! elogln {
     () => {};
     ($($arg:tt)*) => {
-        eprintln!("[{}]: {}", module_path!(), format_args!($($arg)*));
+        eprintln!("[{}]: {}", module_path!(), format_args!($($arg)*))
     };
 }
