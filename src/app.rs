@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
-use std::sync::mpsc::{self, Receiver, RecvError, SendError, Sender};
+use std::sync::mpsc::{self, Receiver, SendError, Sender};
 use std::thread::Builder as ThreadBuilder;
 
 use crate::device::{self, DeviceAddress, DeviceID};
@@ -38,9 +38,9 @@ impl App {
         let builder = ThreadBuilder::new().name(String::from("event loop"));
 
         builder.spawn(move || loop {
-            let Ok(event) = self.event_listener.listen() else {
-                continue;
-            };
+            // SAFETY: Listening can only fail if all event emitters are disconnected,
+            // which is not possible since we contain the one emitter.
+            let event = self.event_listener.listen().unwrap();
 
             match event {
                 Event::AddNewDevice((id, address)) => {
@@ -123,11 +123,7 @@ impl EventListener {
         Self { receiver }
     }
 
-    pub fn listen(&self) -> Result<Event, RecvError> {
-        self.receiver.recv()
+    pub fn listen(&self) -> Option<Event> {
+        self.receiver.recv().ok()
     }
-
-    // pub fn try_listen(&self) -> Result<Event, TryRecvError> {
-    //     self.receiver.try_recv()
-    // }
 }
