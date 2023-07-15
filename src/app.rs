@@ -16,7 +16,7 @@ pub struct App {
 }
 
 impl App {
-    /// Creates a new instance representing current device.
+    /// Creates a new instance of `App` with all the necessary setup.
     pub fn new() -> App {
         App {
             device_id: device::id(),
