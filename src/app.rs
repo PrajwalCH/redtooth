@@ -36,7 +36,7 @@ impl App {
 
         loop {
             // SAFETY: Event receiving can only fail if all event senders are disconnected, which is
-            // not possible since we contain the one sender.
+            // not possible since we have at least one sender.
             let event = self.event_channel.receiver.recv().unwrap();
 
             match event {
