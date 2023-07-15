@@ -11,7 +11,7 @@ pub struct App {
     device_id: DeviceID,
     device_address: DeviceAddress,
     event_sender: Sender<Event>,
-    event_listener: EventListener,
+    event_receiver: Receiver<Event>,
     discovered_devices: HashMap<DeviceID, DeviceAddress>,
 }
 
@@ -24,7 +24,7 @@ impl App {
             device_id: device::id(),
             device_address: device::address(),
             event_sender: sender,
-            event_listener: EventListener::new(receiver),
+            event_receiver: receiver,
             discovered_devices: HashMap::new(),
         }
     }
@@ -38,9 +38,9 @@ impl App {
         let builder = ThreadBuilder::new().name(String::from("event loop"));
 
         builder.spawn(move || loop {
-            // SAFETY: Listening can only fail if all event senders are disconnected,
-            // which is not possible since we contain the one sender.
-            let event = self.event_listener.listen().unwrap();
+            // SAFETY: Event receiving can only fail if all event senders are disconnected, which is
+            // not possible since we contain the one sender.
+            let event = self.event_receiver.recv().unwrap();
 
             match event {
                 Event::AddNewDevice((id, address)) => {
@@ -105,19 +105,5 @@ impl EventEmitter {
         if let Err(SendError(event)) = self.0.send(event) {
             eprintln!("[event]: Failed to emit {event:?} due to listener being disconnected");
         }
-    }
-}
-
-pub struct EventListener {
-    receiver: Receiver<Event>,
-}
-
-impl EventListener {
-    pub fn new(receiver: Receiver<Event>) -> Self {
-        Self { receiver }
-    }
-
-    pub fn listen(&self) -> Option<Event> {
-        self.receiver.recv().ok()
     }
 }
