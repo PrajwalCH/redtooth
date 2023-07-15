@@ -2,10 +2,9 @@ use std::io;
 use std::net::{Ipv4Addr, UdpSocket};
 use std::thread;
 
-use crate::app::Event;
-use crate::app::EventEmitter;
-use crate::device::DeviceAddress;
-use crate::device::DeviceID;
+use crate::app::{Event, EventEmitter};
+use crate::device::{DeviceAddress, DeviceID};
+use crate::{elogln, logln};
 
 // Range between `224.0.0.0` to `224.0.0.250` is reserved or use by routing and maintenance
 // protocols inside a network.
@@ -36,11 +35,7 @@ fn discover_local_devices(event_emitter: EventEmitter) -> io::Result<()> {
     let socket = UdpSocket::bind(("0.0.0.0", MULTICAST_PORT))?;
     // socket.set_read_timeout(Some(Duration::from_millis(20)))?;
     socket.join_multicast_v4(&MULTICAST_ADDRESS, &Ipv4Addr::UNSPECIFIED)?;
-
-    println!(
-        "[Group]: Listening for new announcement on: {}",
-        socket.local_addr()?
-    );
+    logln!("Listening for new announcement on {}", socket.local_addr()?);
 
     loop {
         let mut packet = [0; 4096];
@@ -48,7 +43,7 @@ fn discover_local_devices(event_emitter: EventEmitter) -> io::Result<()> {
             continue;
         };
         let Some((id, mut address)) = parse_packet(&packet[..packet_len]) else {
-            eprintln!("[Group]: Received invalid formatted packet from {announcement_address}");
+            elogln!("Received badly formatted packet from {announcement_address}");
             continue;
         };
 
@@ -57,8 +52,8 @@ fn discover_local_devices(event_emitter: EventEmitter) -> io::Result<()> {
         if address.ip().is_unspecified() {
             address.set_ip(announcement_address.ip());
         }
-        println!("[Group]: New announcement: [{id}]:[{address}]");
         event_emitter.emit(Event::AddNewDevice((id, address)));
+        logln!("New announcement `[{id}];[{address}]`");
     }
 }
 

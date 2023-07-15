@@ -6,6 +6,7 @@ use std::thread::Builder as ThreadBuilder;
 
 use crate::device::{self, DeviceAddress, DeviceID};
 use crate::discovery_server;
+use crate::{elogln, logln};
 
 pub struct App {
     device_id: DeviceID,
@@ -60,7 +61,7 @@ impl App {
     pub fn start_data_receiver(&self) -> io::Result<()> {
         let builder = ThreadBuilder::new().name(String::from("data receiver"));
         let listener = TcpListener::bind(self.device_address)?;
-        println!("[Me]: Receiving data on: {}", listener.local_addr()?);
+        logln!("Receiving data on {}", listener.local_addr()?);
 
         builder.spawn(move || {
             for peer_stream in listener.incoming() {
@@ -76,7 +77,7 @@ impl App {
                 let peer_address = peer_stream.peer_addr().unwrap();
 
                 if !data_buffer.is_empty() {
-                    println!("[Main]: Received `{data}` from {peer_address}");
+                    logln!("Received `{data}` from {peer_address}");
                 }
             }
         })?;
@@ -110,7 +111,7 @@ pub struct EventEmitter(Sender<Event>);
 impl EventEmitter {
     pub fn emit(&self, event: Event) {
         if let Err(SendError(event)) = self.0.send(event) {
-            eprintln!("[event]: Failed to emit {event:?} due to listener being disconnected");
+            elogln!("Failed to emit `{event:?}` due to listener being disconnected");
         }
     }
 }
