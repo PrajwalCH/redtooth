@@ -28,7 +28,7 @@ impl App {
 
     /// Starts the main event loop.
     ///
-    /// This function always blocks the current thread.
+    /// **NOTE:** This function always blocks the current thread.
     pub fn run(&mut self) -> io::Result<()> {
         self.start_data_receiver()?;
         discovery_server::announce_device(self.device_id, self.device_address)?;
