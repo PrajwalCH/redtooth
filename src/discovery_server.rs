@@ -17,7 +17,7 @@ pub fn announce_device(id: DeviceID, address: DeviceAddress) -> io::Result<()> {
     // Don't announce to current instance of the server.
     socket.set_multicast_loop_v4(false)?;
 
-    let packet = format!("{};{}", id, address);
+    let packet = format!("{id};{address}");
     socket.send_to(packet.as_bytes(), (MULTICAST_ADDRESS, MULTICAST_PORT))?;
     Ok(())
 }
