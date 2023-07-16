@@ -1,28 +1,31 @@
-use std::collections::HashMap;
 use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::mpsc::{self, Receiver, SendError, Sender};
 use std::thread::Builder as ThreadBuilder;
 
 use crate::device::{self, DeviceAddress, DeviceID};
-use crate::discovery_server;
+use crate::discovery_server::DiscoveryServer;
 use crate::{elogln, logln};
 
+#[allow(dead_code)]
 pub struct App {
     device_id: DeviceID,
     device_address: DeviceAddress,
     event_channel: EventChannel,
-    discovered_devices: HashMap<DeviceID, DeviceAddress>,
+    discovery_server: DiscoveryServer,
 }
 
 impl App {
     /// Creates a new instance of `App` with all the necessary setup.
     pub fn new() -> App {
+        let device_id = device::id();
+        let device_address = device::address();
+
         App {
-            device_id: device::id(),
-            device_address: device::address(),
+            device_id,
+            device_address,
             event_channel: EventChannel::new(),
-            discovered_devices: HashMap::new(),
+            discovery_server: DiscoveryServer::new(device_id, device_address),
         }
     }
 
@@ -31,8 +34,8 @@ impl App {
     /// **NOTE:** This function always blocks the current thread.
     pub fn run(&mut self) -> io::Result<()> {
         self.start_data_receiver()?;
-        discovery_server::announce_device(self.device_id, self.device_address)?;
-        discovery_server::start_local_discovery(self.event_emitter())?;
+        self.discovery_server.start()?;
+        self.discovery_server.announce_device()?;
 
         loop {
             // SAFETY: Event receiving can only fail if all event senders are disconnected, which is
@@ -40,14 +43,11 @@ impl App {
             let event = self.event_channel.receiver.recv().unwrap();
 
             match event {
-                Event::AddNewDevice((id, address)) => {
-                    self.discovered_devices.insert(id, address);
-                }
                 Event::PingAll => {
-                    for device_address in self.discovered_devices.values() {
-                        let mut device_stream = TcpStream::connect(device_address).unwrap();
-                        device_stream.write_all("ping".as_bytes()).unwrap();
-                    }
+                    // for device_address in self.discovered_devices.values() {
+                    //     let mut device_stream = TcpStream::connect(device_address).unwrap();
+                    //     device_stream.write_all("ping".as_bytes()).unwrap();
+                    // }
                 }
             };
         }
@@ -100,8 +100,6 @@ impl EventChannel {
 
 #[derive(Debug)]
 pub enum Event {
-    /// Adds a new device to the list of discovered devices.
-    AddNewDevice((DeviceID, DeviceAddress)),
     /// Sends a ping message to all the devices.
     PingAll,
 }
