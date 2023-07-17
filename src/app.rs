@@ -59,7 +59,7 @@ impl App {
     }
 
     /// Starts a TCP server for receiving data.
-    pub fn start_data_receiver(&self) -> io::Result<()> {
+    fn start_data_receiver(&self) -> io::Result<()> {
         let builder = ThreadBuilder::new().name(String::from("data receiver"));
         let listener = TcpListener::bind(self.device_address)?;
         logln!("Receiving data on {}", listener.local_addr()?);
