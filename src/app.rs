@@ -53,11 +53,6 @@ impl App {
         }
     }
 
-    /// Returns the [`EventEmitter`] that can be used to send events to application's event loop.
-    pub fn event_emitter(&self) -> EventEmitter {
-        EventEmitter(self.event_channel.sender.clone())
-    }
-
     /// Starts a TCP server for receiving data.
     fn start_data_receiver(&self) -> io::Result<()> {
         let builder = ThreadBuilder::new().name(String::from("data receiver"));
@@ -83,6 +78,11 @@ impl App {
             }
         })?;
         Ok(())
+    }
+
+    /// Returns the [`EventEmitter`] that can be used to send events to application's event loop.
+    pub fn event_emitter(&self) -> EventEmitter {
+        EventEmitter(self.event_channel.sender.clone())
     }
 }
 
