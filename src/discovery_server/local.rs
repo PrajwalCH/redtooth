@@ -2,11 +2,9 @@
 
 use std::io;
 use std::net::{Ipv4Addr, UdpSocket};
-use std::sync::{Arc, Mutex, TryLockError};
 use std::thread::Builder as ThreadBuilder;
 
-use super::DeviceMap;
-
+use crate::app::{Event, EventEmitter};
 use crate::device::{DeviceAddress, DeviceID};
 use crate::{elogln, logln};
 
@@ -16,9 +14,9 @@ const MULTICAST_ADDRESS: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 251);
 const MULTICAST_PORT: u16 = 20581;
 
 /// Starts a server for discovering devices on the local network.
-pub fn start(device_map: Arc<Mutex<DeviceMap>>) -> io::Result<()> {
+pub fn start(event_emitter: EventEmitter) -> io::Result<()> {
     let builder = ThreadBuilder::new().name(String::from("local discovery"));
-    builder.spawn(move || discover_devices(device_map))?;
+    builder.spawn(move || discover_devices(event_emitter))?;
     Ok(())
 }
 
@@ -34,7 +32,7 @@ pub fn announce_device(id: DeviceID, address: DeviceAddress) -> io::Result<()> {
 }
 
 /// Starts listening for an **announcement** packet on the local network.
-fn discover_devices(device_map: Arc<Mutex<DeviceMap>>) -> io::Result<()> {
+fn discover_devices(event_emitter: EventEmitter) -> io::Result<()> {
     let socket = UdpSocket::bind(("0.0.0.0", MULTICAST_PORT))?;
     // socket.set_read_timeout(Some(Duration::from_millis(20)))?;
     socket.join_multicast_v4(&MULTICAST_ADDRESS, &Ipv4Addr::UNSPECIFIED)?;
@@ -55,18 +53,7 @@ fn discover_devices(device_map: Arc<Mutex<DeviceMap>>) -> io::Result<()> {
         if address.ip().is_unspecified() {
             address.set_ip(announcement_address.ip());
         }
-
-        {
-            let mut map = match device_map.try_lock() {
-                Ok(guard) => guard,
-                Err(TryLockError::Poisoned(p)) => p.into_inner(),
-                Err(TryLockError::WouldBlock) => {
-                    elogln!("device map's lock is currently acquired by another thread");
-                    continue;
-                }
-            };
-            map.insert(id, address);
-        }
+        event_emitter.emit(Event::NewDeviceDiscovered((id, address)));
         logln!("New announcement `[{id}];[{address}]`");
     }
 }
