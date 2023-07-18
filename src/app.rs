@@ -35,11 +35,7 @@ impl App {
         discovery_server::start(self.event_emitter())?;
         discovery_server::announce_device(self.device_id, self.device_address)?;
 
-        loop {
-            // SAFETY: Event receiving can only fail if all event senders are disconnected, which is
-            // not possible since we have at least one sender.
-            let event = self.event_channel.receiver.recv().unwrap();
-
+        while let Ok(event) = self.event_channel.receiver.recv() {
             match event {
                 Event::NewDeviceDiscovered((id, address)) => {
                     self.discovered_devices.insert(id, address);
@@ -52,6 +48,7 @@ impl App {
                 }
             };
         }
+        Ok(())
     }
 
     /// Starts a TCP server for receiving data.
