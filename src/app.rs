@@ -8,7 +8,6 @@ use crate::device::{self, DeviceAddress, DeviceID};
 use crate::discovery_server;
 use crate::{elogln, logln};
 
-#[allow(dead_code)]
 pub struct App {
     device_id: DeviceID,
     device_address: DeviceAddress,
