@@ -87,18 +87,6 @@ impl App {
     }
 }
 
-struct EventChannel {
-    sender: Sender<Event>,
-    receiver: Receiver<Event>,
-}
-
-impl EventChannel {
-    pub fn new() -> EventChannel {
-        let (sender, receiver) = mpsc::channel::<Event>();
-        EventChannel { sender, receiver }
-    }
-}
-
 #[derive(Debug)]
 pub enum Event {
     DataReceived(Vec<u8>),
@@ -115,5 +103,17 @@ impl EventEmitter {
         if let Err(SendError(event)) = self.0.send(event) {
             elogln!("Failed to emit `{event:?}` due to listener being disconnected");
         }
+    }
+}
+
+struct EventChannel {
+    sender: Sender<Event>,
+    receiver: Receiver<Event>,
+}
+
+impl EventChannel {
+    pub fn new() -> EventChannel {
+        let (sender, receiver) = mpsc::channel::<Event>();
+        EventChannel { sender, receiver }
     }
 }
