@@ -26,6 +26,11 @@ impl App {
         }
     }
 
+    /// Returns the [`EventEmitter`] that can be used to send events to application's event loop.
+    pub fn event_emitter(&self) -> EventEmitter {
+        EventEmitter(self.event_channel.sender.clone())
+    }
+
     /// Starts the main event loop.
     ///
     /// **NOTE:** This function always blocks the current thread.
@@ -36,6 +41,9 @@ impl App {
 
         while let Ok(event) = self.event_channel.receiver.recv() {
             match event {
+                Event::DataReceived(data) => {
+                    self.handle_data(data);
+                }
                 Event::NewDeviceDiscovered((id, address)) => {
                     self.discovered_devices.insert(id, address);
                 }
@@ -52,8 +60,9 @@ impl App {
 
     /// Starts a TCP server for receiving data.
     fn start_data_receiver(&self) -> io::Result<()> {
-        let builder = ThreadBuilder::new().name(String::from("data receiver"));
+        let event_emitter = self.event_emitter();
         let listener = TcpListener::bind(self.device_address)?;
+        let builder = ThreadBuilder::new().name(String::from("data receiver"));
         logln!("Receiving data on {}", listener.local_addr()?);
 
         builder.spawn(move || {
@@ -61,25 +70,20 @@ impl App {
                 let Ok(mut peer_stream) = peer_stream else {
                     continue;
                 };
+                let mut buffer: Vec<u8> = Vec::new();
 
-                // NOTE: For now the buffer is only used for holding `ping` message.
-                let mut data_buffer = [0; 6];
-                peer_stream.read_exact(&mut data_buffer).ok();
-
-                let data = std::str::from_utf8(&data_buffer).unwrap();
-                let peer_address = peer_stream.peer_addr().unwrap();
-
-                if !data_buffer.is_empty() {
-                    logln!("Received `{data}` from {peer_address}");
+                if let Err(e) = peer_stream.read_to_end(&mut buffer) {
+                    elogln!("Failed to read received data: {e}");
+                    continue;
                 }
+                event_emitter.emit(Event::DataReceived(buffer));
             }
         })?;
         Ok(())
     }
 
-    /// Returns the [`EventEmitter`] that can be used to send events to application's event loop.
-    pub fn event_emitter(&self) -> EventEmitter {
-        EventEmitter(self.event_channel.sender.clone())
+    fn handle_data(&self, data: Vec<u8>) {
+        todo!()
     }
 }
 
@@ -97,6 +101,7 @@ impl EventChannel {
 
 #[derive(Debug)]
 pub enum Event {
+    DataReceived(Vec<u8>),
     NewDeviceDiscovered((DeviceID, DeviceAddress)),
     /// Sends a ping message to all the devices.
     PingAll,
