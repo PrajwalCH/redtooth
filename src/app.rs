@@ -82,8 +82,30 @@ impl App {
         Ok(())
     }
 
+    /// Parses the data and creates a file according to extracted header.
+    ///
+    /// Data should be in the following format:
+    /// ```
+    /// Name: filename
+    /// Extension: .jpeg
+    /// ::
+    /// file content
+    /// ```
     fn handle_data(&self, data: Vec<u8>) {
-        todo!()
+        let data = String::from_utf8(data).unwrap();
+        let mut it = data.split("::");
+
+        let (file_name, file_extension) = App::parse_header(it.next().unwrap());
+        let content = it.next().unwrap();
+
+        dbg!(file_name, file_extension, content);
+    }
+
+    fn parse_header(header: &str) -> (&str, &str) {
+        let mut field_it = header.split('\n');
+        let file_name = field_it.next().unwrap().trim_start_matches("Name: ");
+        let file_extension = field_it.next().unwrap().trim_start_matches("Extension: ");
+        (file_name, file_extension)
     }
 }
 
