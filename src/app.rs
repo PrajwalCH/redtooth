@@ -86,8 +86,7 @@ impl App {
     ///
     /// Data should be in the following format:
     /// ```
-    /// Name: filename
-    /// Extension: .jpeg
+    /// name: filename.jpeg
     /// ::
     /// file content
     /// ```
@@ -95,17 +94,14 @@ impl App {
         let data = String::from_utf8(data).unwrap();
         let mut it = data.split("::");
 
-        let (file_name, file_extension) = App::parse_header(it.next().unwrap());
+        let file_name = App::extract_file_name(it.next().unwrap());
         let content = it.next().unwrap();
 
-        dbg!(file_name, file_extension, content);
+        dbg!(file_name, content);
     }
 
-    fn parse_header(header: &str) -> (&str, &str) {
-        let mut field_it = header.split('\n');
-        let file_name = field_it.next().unwrap().trim_start_matches("Name: ");
-        let file_extension = field_it.next().unwrap().trim_start_matches("Extension: ");
-        (file_name, file_extension)
+    fn extract_file_name(header: &str) -> &str {
+        header.trim().trim_start_matches("name: ")
     }
 }
 
