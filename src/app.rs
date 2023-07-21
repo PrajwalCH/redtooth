@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::io::{self, Read};
 use std::net::TcpListener;
+use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, SendError, Sender};
 use std::thread::Builder as ThreadBuilder;
 
@@ -13,16 +14,28 @@ pub struct App {
     device_address: DeviceAddress,
     event_channel: EventChannel,
     discovered_devices: HashMap<DeviceID, DeviceAddress>,
+    /// Path where received file will be saved.
+    save_location: PathBuf,
 }
 
 impl App {
     /// Creates a new instance of `App` with all the necessary setup.
     pub fn new() -> App {
+        use std::env;
+
+        let home_path = if cfg!(windows) {
+            env::var("USERPROFILE")
+        } else {
+            env::var("HOME")
+        };
+        let save_location = home_path.map_or_else(|_| env::current_dir().unwrap(), PathBuf::from);
+
         App {
             device_id: device::id(),
             device_address: device::address(),
             event_channel: EventChannel::new(),
             discovered_devices: HashMap::new(),
+            save_location,
         }
     }
 
@@ -42,7 +55,9 @@ impl App {
         while let Ok(event) = self.event_channel.receiver.recv() {
             match event {
                 Event::DataReceived(data) => {
-                    self.handle_data(data);
+                    if let Err(e) = self.write_data(data) {
+                        elogln!("Encountered an error while writing data to the disk: {e}");
+                    }
                 }
                 Event::NewDeviceDiscovered((id, address)) => {
                     self.discovered_devices.insert(id, address);
@@ -82,26 +97,28 @@ impl App {
         Ok(())
     }
 
-    /// Parses the data and creates a file according to extracted header.
+    /// Parses the provided data and creates a file based on the extracted header.
     ///
     /// Data should be in the following format:
     /// ```
     /// name: filename.jpeg
     /// ::
-    /// file content
+    /// file contents
     /// ```
-    fn handle_data(&self, data: Vec<u8>) {
-        let data = String::from_utf8(data).unwrap();
-        let mut it = data.split("::");
+    fn write_data(&self, data: Vec<u8>) -> io::Result<()> {
+        use std::fs;
 
-        let file_name = App::extract_file_name(it.next().unwrap());
-        let content = it.next().unwrap();
+        let data = String::from_utf8_lossy(&data);
+        let mut sections = data.split("::");
 
-        dbg!(file_name, content);
-    }
-
-    fn extract_file_name(header: &str) -> &str {
-        header.trim().trim_start_matches("name: ")
+        if let (Some(header), Some(contents)) = (sections.next(), sections.next()) {
+            let file_name = header.trim().trim_start_matches("name: ");
+            let file_path = self.save_location.join(file_name);
+            fs::write(file_path, contents)
+        } else {
+            elogln!("Received data does not contain both the header and contents sections");
+            Ok(())
+        }
     }
 }
 
