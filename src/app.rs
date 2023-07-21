@@ -61,12 +61,6 @@ impl App {
                 Event::NewDeviceDiscovered((id, address)) => {
                     self.discovered_devices.insert(id, address);
                 }
-                Event::PingAll => {
-                    // for device_address in self.discovered_devices.values() {
-                    //     let mut device_stream = TcpStream::connect(device_address).unwrap();
-                    //     device_stream.write_all("ping".as_bytes()).unwrap();
-                    // }
-                }
             };
         }
         Ok(())
@@ -127,8 +121,6 @@ impl App {
 pub enum Event {
     DataReceived(Vec<u8>),
     NewDeviceDiscovered((DeviceID, DeviceAddress)),
-    /// Sends a ping message to all the devices.
-    PingAll,
 }
 
 #[derive(Clone)]
