@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::env;
 use std::io::{self, Read};
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, SendError, Sender};
@@ -20,21 +21,17 @@ pub struct App {
 impl App {
     /// Creates a new instance of `App` with all the necessary setup.
     pub fn new() -> App {
-        use std::env;
-
-        let home_path = if cfg!(windows) {
-            env::var("USERPROFILE")
-        } else {
-            env::var("HOME")
-        };
-        let save_location = home_path.map_or_else(|_| env::current_dir().unwrap(), PathBuf::from);
+        let home_env_key = if cfg!(windows) { "USERPROFILE" } else { "HOME" };
+        let home_path = env::var(home_env_key).expect(
+            "env variable `HOME` for linux and `USERPROFILE` for windows should be available",
+        );
 
         App {
             device_id: device::id(),
             device_address: device::address(),
             event_channel: EventChannel::new(),
             discovered_devices: HashMap::new(),
-            save_location,
+            save_location: PathBuf::from(home_path),
         }
     }
 
