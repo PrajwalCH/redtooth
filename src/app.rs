@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::env;
 use std::io::{self, Read};
+use std::net::TcpListener;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, SendError, Sender};
 use std::thread::Builder as ThreadBuilder;
@@ -65,8 +66,6 @@ impl App {
 
     /// Starts a TCP server for receiving data.
     fn start_data_receiver(&self) -> io::Result<()> {
-        use std::net::TcpListener;
-
         let event_emitter = self.event_emitter();
         let listener = TcpListener::bind(self.device_address)?;
         let builder = ThreadBuilder::new().name(String::from("data receiver"));
