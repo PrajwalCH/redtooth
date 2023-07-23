@@ -4,7 +4,7 @@ use std::io::Write;
 use std::net::TcpStream;
 use std::path::Path;
 
-use crate::app::DataHeader;
+use crate::protocol::DataHeader;
 use crate::protocol::DeviceAddress;
 
 pub fn send_file_to<P: AsRef<Path>>(addr: DeviceAddress, path: P) -> io::Result<()> {

@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::env;
-use std::fmt;
 use std::fs;
 use std::io::{self, Read};
 use std::net::TcpListener;
@@ -10,7 +9,7 @@ use std::sync::mpsc::{self, Receiver, SendError, Sender};
 use std::thread::Builder as ThreadBuilder;
 
 use crate::discovery_server;
-use crate::protocol::{self, DeviceAddress, DeviceID};
+use crate::protocol::{self, DataHeader, DeviceAddress, DeviceID};
 use crate::{elogln, logln};
 
 pub struct App {
@@ -150,51 +149,5 @@ impl EventChannel {
     pub fn new() -> EventChannel {
         let (sender, receiver) = mpsc::channel::<Event>();
         EventChannel { sender, receiver }
-    }
-}
-
-/// An error returned from [`DataHeader::from_str`].
-pub enum DataHeaderParseError {
-    MissingName,
-}
-
-impl fmt::Display for DataHeaderParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use self::DataHeaderParseError::*;
-
-        match self {
-            MissingName => write!(f, "Missing required `name` field"),
-        }
-    }
-}
-
-/// Represents the header information for data being transmitted.
-///
-/// It encapsulates essential metadata about the file being sent.
-/// This header is pre-pended to the actual file data before transmission,
-/// allowing the receiver to correctly handle the incoming data.
-#[derive(Debug)]
-pub struct DataHeader {
-    /// The name of the file, including its extension.
-    pub(crate) file_name: String,
-}
-
-impl FromStr for DataHeader {
-    type Err = DataHeaderParseError;
-
-    fn from_str(s: &str) -> Result<DataHeader, DataHeaderParseError> {
-        let name = s
-            .trim()
-            .strip_prefix("file_name: ")
-            .ok_or(DataHeaderParseError::MissingName)?
-            .to_string();
-
-        Ok(Self { file_name: name })
-    }
-}
-
-impl fmt::Display for DataHeader {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "file_name: {}", self.file_name)
     }
 }
