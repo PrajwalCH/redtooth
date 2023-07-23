@@ -8,7 +8,8 @@ use std::sync::mpsc::{self, Receiver, SendError, Sender};
 use std::thread::Builder as ThreadBuilder;
 
 use crate::discovery_server::DiscoveryServer;
-use crate::protocol::{self, DataHeader, DeviceAddress, DeviceID};
+use crate::protocol::{self, DeviceAddress, DeviceID};
+use crate::protocol::{DataHeader, DATA_SECTIONS_SEPARATOR};
 use crate::{elogln, logln};
 
 pub struct App {
@@ -87,24 +88,28 @@ impl App {
                     elogln!("Failed to read received data: {e}");
                     continue;
                 }
-                // FIXME: The original data will be changed if we replace invalid UTF-8 sequences
-                //        with replacement character `�`. Since image, binary and other
-                //        non-textual files can contain invalid UTF-8 character, the current
-                //        implementation doesn't handle them properly.
-                let data = String::from_utf8_lossy(&data);
-                let mut sections = data.split("::");
 
-                match sections.next().map(DataHeader::from_str) {
-                    Some(Ok(header)) => {
-                        let contents = Vec::from(sections.next().unwrap_or_default());
-                        event_emitter.emit(Event::DataReceived(header, contents));
+                let separator_len = DATA_SECTIONS_SEPARATOR.len();
+                let Some(separator_index) = data
+                    .windows(separator_len)
+                    .position(|bytes| bytes == DATA_SECTIONS_SEPARATOR) else
+                {
+                    elogln!("Data sections separator are missing from the received data");
+                    continue;
+                };
+                let raw_header = std::str::from_utf8(&data[..separator_index]).unwrap_or_default();
+
+                match DataHeader::from_str(raw_header) {
+                    Ok(header) => {
+                        // Skip all the separator bytes.
+                        let file_contents = data.get(separator_index + separator_len..);
+                        // If a valid header and separator are present but the contents are missing,
+                        // declare it as a empty.
+                        let file_contents = file_contents.unwrap_or_default().to_owned();
+                        event_emitter.emit(Event::DataReceived(header, file_contents));
                     }
-                    Some(Err(e)) => {
+                    Err(e) => {
                         elogln!("Unable to parse the header of received data: {e}");
-                        continue;
-                    }
-                    None => {
-                        elogln!("Received data does not contain the header");
                         continue;
                     }
                 };
