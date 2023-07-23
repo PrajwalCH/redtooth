@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::io::{self, Read};
@@ -8,7 +7,7 @@ use std::str::FromStr;
 use std::sync::mpsc::{self, Receiver, SendError, Sender};
 use std::thread::Builder as ThreadBuilder;
 
-use crate::discovery_server;
+use crate::discovery_server::DiscoveryServer;
 use crate::protocol::{self, DataHeader, DeviceAddress, DeviceID};
 use crate::{elogln, logln};
 
@@ -16,7 +15,7 @@ pub struct App {
     device_id: DeviceID,
     device_address: DeviceAddress,
     event_channel: EventChannel,
-    discovered_devices: HashMap<DeviceID, DeviceAddress>,
+    discovery_server: DiscoveryServer,
     /// Path where received file will be saved.
     save_location: PathBuf,
 }
@@ -33,7 +32,7 @@ impl App {
             device_id: protocol::device_id(),
             device_address: protocol::device_address(),
             event_channel: EventChannel::new(),
-            discovered_devices: HashMap::new(),
+            discovery_server: DiscoveryServer::new(),
             save_location: PathBuf::from(home_path),
         }
     }
@@ -48,8 +47,9 @@ impl App {
     /// **NOTE:** This function always blocks the current thread.
     pub fn run(&mut self) -> io::Result<()> {
         self.start_data_receiver()?;
-        discovery_server::start(self.event_emitter())?;
-        discovery_server::announce_device(self.device_id, self.device_address)?;
+        self.discovery_server.start()?;
+        self.discovery_server
+            .announce_device(self.device_id, self.device_address)?;
 
         while let Ok(event) = self.event_channel.receiver.recv() {
             match event {
@@ -57,9 +57,6 @@ impl App {
                     if let Err(e) = self.write_data(header, contents) {
                         elogln!("Encountered an error while writing data to the disk: {e}");
                     }
-                }
-                Event::NewDeviceDiscovered((id, address)) => {
-                    self.discovered_devices.insert(id, address);
                 }
             };
         }
@@ -126,7 +123,6 @@ impl App {
 #[derive(Debug)]
 pub enum Event {
     DataReceived(DataHeader, Vec<u8>),
-    NewDeviceDiscovered((DeviceID, DeviceAddress)),
 }
 
 #[derive(Clone)]

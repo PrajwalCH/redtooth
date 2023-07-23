@@ -2,9 +2,10 @@
 
 use std::io;
 use std::net::{Ipv4Addr, UdpSocket};
+use std::sync::{Arc, Mutex, TryLockError};
 use std::thread::Builder as ThreadBuilder;
 
-use crate::app::{Event, EventEmitter};
+use super::{DeviceMap, ThreadHandle};
 use crate::protocol::{DeviceAddress, DeviceID};
 use crate::{elogln, logln};
 
@@ -14,10 +15,9 @@ const MULTICAST_ADDRESS: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 251);
 const MULTICAST_PORT: u16 = 20581;
 
 /// Starts a server for discovering devices on the local network.
-pub fn start(event_emitter: EventEmitter) -> io::Result<()> {
+pub fn start(device_map: Arc<Mutex<DeviceMap>>) -> io::Result<ThreadHandle> {
     let builder = ThreadBuilder::new().name(String::from("local discovery"));
-    builder.spawn(move || discover_devices(event_emitter))?;
-    Ok(())
+    builder.spawn(move || discover_devices(device_map))
 }
 
 /// Announces the device to other instances of the local server.
@@ -32,7 +32,7 @@ pub fn announce_device(id: DeviceID, address: DeviceAddress) -> io::Result<()> {
 }
 
 /// Starts listening for an **announcement** packet on the local network.
-fn discover_devices(event_emitter: EventEmitter) -> io::Result<()> {
+fn discover_devices(device_map: Arc<Mutex<DeviceMap>>) -> io::Result<()> {
     let socket = UdpSocket::bind(("0.0.0.0", MULTICAST_PORT))?;
     // socket.set_read_timeout(Some(Duration::from_millis(20)))?;
     socket.join_multicast_v4(&MULTICAST_ADDRESS, &Ipv4Addr::UNSPECIFIED)?;
@@ -53,7 +53,19 @@ fn discover_devices(event_emitter: EventEmitter) -> io::Result<()> {
         if address.ip().is_unspecified() {
             address.set_ip(announcement_address.ip());
         }
-        event_emitter.emit(Event::NewDeviceDiscovered((id, address)));
+
+        // Unlock the map's lock ASAP using inner block.
+        {
+            let mut device_map = match device_map.try_lock() {
+                Ok(guard) => guard,
+                Err(TryLockError::Poisoned(p)) => p.into_inner(),
+                Err(TryLockError::WouldBlock) => {
+                    elogln!("Device map's lock is currently acquired by some other component");
+                    continue;
+                }
+            };
+            device_map.insert(id, address);
+        }
         logln!("New announcement `[{id}];[{address}]`");
     }
 }
