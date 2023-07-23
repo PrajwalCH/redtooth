@@ -8,6 +8,9 @@ use std::time::Instant;
 use crate::interface;
 
 const TCP_PORT: u16 = 25802;
+/// The data sections separator used to distinguish sections (eg. header and file contents)
+/// within a data stream.
+pub const DATA_SECTIONS_SEPARATOR: &[u8; 2] = b"::";
 
 pub type DeviceID = u64;
 pub type DeviceAddress = SocketAddr;

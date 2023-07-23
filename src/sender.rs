@@ -6,6 +6,7 @@ use std::path::Path;
 
 use crate::protocol::DataHeader;
 use crate::protocol::DeviceAddress;
+use crate::protocol::DATA_SECTIONS_SEPARATOR;
 
 pub fn send_file_to<P: AsRef<Path>>(addr: DeviceAddress, path: P) -> io::Result<()> {
     send_file_to_all(&[addr], path)
@@ -26,7 +27,7 @@ pub fn send_file_to_all<P: AsRef<Path>>(addrs: &[DeviceAddress], path: P) -> io:
 
     let mut data = Vec::new();
     data.extend_from_slice(header.as_bytes());
-    data.extend_from_slice(b"::");
+    data.extend_from_slice(DATA_SECTIONS_SEPARATOR);
     data.extend_from_slice(&file_contents);
 
     for addr in addrs {
