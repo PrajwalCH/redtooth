@@ -4,7 +4,7 @@ use std::fmt;
 use std::fs;
 use std::io::{self, Read};
 use std::net::TcpListener;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::mpsc::{self, Receiver, SendError, Sender};
 use std::thread::Builder as ThreadBuilder;
@@ -176,7 +176,7 @@ impl fmt::Display for DataHeaderParseError {
 #[derive(Debug)]
 pub struct DataHeader {
     /// The name of the file, including its extension.
-    file_name: String,
+    pub(crate) file_name: String,
 }
 
 impl FromStr for DataHeader {
@@ -190,5 +190,11 @@ impl FromStr for DataHeader {
             .to_string();
 
         Ok(Self { file_name: name })
+    }
+}
+
+impl fmt::Display for DataHeader {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "file_name: {}", self.file_name)
     }
 }
