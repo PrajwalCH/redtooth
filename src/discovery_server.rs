@@ -3,7 +3,7 @@ mod local;
 use std::io;
 
 use crate::app::EventEmitter;
-use crate::device::{DeviceAddress, DeviceID};
+use crate::protocol::{DeviceAddress, DeviceID};
 
 /// Starts a server for discovering devices on either local or global or both network.
 pub fn start(event_emitter: EventEmitter) -> io::Result<()> {

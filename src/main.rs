@@ -1,8 +1,8 @@
 mod app;
-mod device;
 mod discovery_server;
 mod interface;
 mod macros;
+mod protocol;
 mod sender;
 
 use crate::app::App;

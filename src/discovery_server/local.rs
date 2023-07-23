@@ -5,7 +5,7 @@ use std::net::{Ipv4Addr, UdpSocket};
 use std::thread::Builder as ThreadBuilder;
 
 use crate::app::{Event, EventEmitter};
-use crate::device::{DeviceAddress, DeviceID};
+use crate::protocol::{DeviceAddress, DeviceID};
 use crate::{elogln, logln};
 
 // Range between `224.0.0.0` to `224.0.0.250` is reserved or use by routing and maintenance

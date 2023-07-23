@@ -9,8 +9,8 @@ use std::str::FromStr;
 use std::sync::mpsc::{self, Receiver, SendError, Sender};
 use std::thread::Builder as ThreadBuilder;
 
-use crate::device::{self, DeviceAddress, DeviceID};
 use crate::discovery_server;
+use crate::protocol::{self, DeviceAddress, DeviceID};
 use crate::{elogln, logln};
 
 pub struct App {
@@ -31,8 +31,8 @@ impl App {
         );
 
         App {
-            device_id: device::id(),
-            device_address: device::address(),
+            device_id: protocol::device_id(),
+            device_address: protocol::device_address(),
             event_channel: EventChannel::new(),
             discovered_devices: HashMap::new(),
             save_location: PathBuf::from(home_path),
