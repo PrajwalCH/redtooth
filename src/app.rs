@@ -4,7 +4,7 @@ use std::fmt;
 use std::fs;
 use std::io::{self, Read};
 use std::net::TcpListener;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::mpsc::{self, Receiver, SendError, Sender};
 use std::thread::Builder as ThreadBuilder;
@@ -81,7 +81,7 @@ impl App {
                 };
                 // Data should be in the following format:
                 // ```
-                // name: filename.jpeg
+                // file_name: filename.jpeg
                 // ::
                 // file contents
                 // ```
@@ -119,7 +119,7 @@ impl App {
 
     /// Creates a file based on the provided header.
     fn write_data(&self, header: DataHeader, contents: Vec<u8>) -> io::Result<()> {
-        let file_path = self.save_location.join(header.name);
+        let file_path = self.save_location.join(header.file_name);
         fs::write(file_path, contents)
     }
 }
@@ -176,7 +176,7 @@ impl fmt::Display for DataHeaderParseError {
 #[derive(Debug)]
 pub struct DataHeader {
     /// The name of the file, including its extension.
-    name: String,
+    file_name: String,
 }
 
 impl FromStr for DataHeader {
@@ -185,10 +185,10 @@ impl FromStr for DataHeader {
     fn from_str(s: &str) -> Result<DataHeader, DataHeaderParseError> {
         let name = s
             .trim()
-            .strip_prefix("name: ")
+            .strip_prefix("file_name: ")
             .ok_or(DataHeaderParseError::MissingName)?
             .to_string();
 
-        Ok(Self { name })
+        Ok(Self { file_name: name })
     }
 }
