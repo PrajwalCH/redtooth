@@ -3,6 +3,7 @@ mod device;
 mod discovery_server;
 mod interface;
 mod macros;
+mod sender;
 
 use crate::app::App;
 
