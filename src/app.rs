@@ -1,16 +1,14 @@
 use std::env;
 use std::fs;
-use std::io::{self, Read};
-use std::net::TcpListener;
+use std::io;
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::sync::mpsc::{self, Receiver, SendError, Sender};
 use std::thread::Builder as ThreadBuilder;
 
 use crate::discovery_server::DiscoveryServer;
-use crate::protocol::{self, DeviceAddress, DeviceID};
-use crate::protocol::{DataHeader, DATA_SECTIONS_SEPARATOR};
-use crate::{elogln, logln};
+use crate::elogln;
+use crate::protocol::{self, DataHeader, DeviceAddress, DeviceID};
+use crate::receiver;
 
 pub struct App {
     device_id: DeviceID,
@@ -66,55 +64,10 @@ impl App {
 
     /// Starts a TCP server for receiving data.
     fn start_data_receiver(&self) -> io::Result<()> {
+        let receiving_addr = self.device_address;
         let event_emitter = self.event_emitter();
-        let listener = TcpListener::bind(self.device_address)?;
-        let builder = ThreadBuilder::new().name(String::from("data receiver"));
-        logln!("Receiving data on {}", listener.local_addr()?);
-
-        builder.spawn(move || {
-            for peer_stream in listener.incoming() {
-                let Ok(mut peer_stream) = peer_stream else {
-                    continue;
-                };
-                // Data should be in the following format:
-                // ```
-                // file_name: filename.jpeg
-                // ::
-                // file contents
-                // ```
-                let mut data: Vec<u8> = Vec::new();
-
-                if let Err(e) = peer_stream.read_to_end(&mut data) {
-                    elogln!("Failed to read received data: {e}");
-                    continue;
-                }
-
-                let separator_len = DATA_SECTIONS_SEPARATOR.len();
-                let Some(separator_index) = data
-                    .windows(separator_len)
-                    .position(|bytes| bytes == DATA_SECTIONS_SEPARATOR) else
-                {
-                    elogln!("Data sections separator are missing from the received data");
-                    continue;
-                };
-                let raw_header = std::str::from_utf8(&data[..separator_index]).unwrap_or_default();
-
-                match DataHeader::from_str(raw_header) {
-                    Ok(header) => {
-                        // Skip all the separator bytes.
-                        let file_contents = data.get(separator_index + separator_len..);
-                        // If a valid header and separator are present but the contents are missing,
-                        // declare it as a empty.
-                        let file_contents = file_contents.unwrap_or_default().to_owned();
-                        event_emitter.emit(Event::DataReceived(header, file_contents));
-                    }
-                    Err(e) => {
-                        elogln!("Unable to parse the header of received data: {e}");
-                        continue;
-                    }
-                };
-            }
-        })?;
+        let builder = ThreadBuilder::new().name(String::from("data_receiver"));
+        builder.spawn(move || receiver::start_file_receiving(receiving_addr, event_emitter))?;
         Ok(())
     }
 
