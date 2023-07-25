@@ -15,7 +15,7 @@ pub struct App {
     device_address: DeviceAddress,
     event_channel: EventChannel,
     discovery_server: DiscoveryServer,
-    /// Path where received file will be saved.
+    /// Path where the received file will be saved.
     save_location: PathBuf,
 }
 

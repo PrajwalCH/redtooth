@@ -23,7 +23,7 @@ pub fn start(device_map: Arc<Mutex<DeviceMap>>) -> io::Result<ThreadHandle> {
 /// Announces the device to other instances of the local server.
 pub fn announce_device(id: DeviceID, address: DeviceAddress) -> io::Result<()> {
     let socket = UdpSocket::bind("0.0.0.0:0")?;
-    // Don't announce to current instance of the server.
+    // Don't announce to the current instance of the server.
     socket.set_multicast_loop_v4(false)?;
 
     let packet = format!("{id};{address}");
@@ -44,7 +44,7 @@ fn discover_devices(device_map: Arc<Mutex<DeviceMap>>) -> io::Result<()> {
             continue;
         };
         let Some((id, mut address)) = parse_packet(&packet[..packet_len]) else {
-            elogln!("Received badly formatted packet from {announcement_address}");
+            elogln!("Received a badly formatted packet from {announcement_address}");
             continue;
         };
 
@@ -74,7 +74,7 @@ fn discover_devices(device_map: Arc<Mutex<DeviceMap>>) -> io::Result<()> {
 ///
 /// ## Panics
 ///
-/// If the packet is not a valid UTF-8.
+/// If the packet is not valid, UTF-8.
 fn parse_packet(packet: &[u8]) -> Option<(DeviceID, DeviceAddress)> {
     let packet = String::from_utf8(packet.to_vec()).unwrap();
     let mut content_iter = packet.split(';');
