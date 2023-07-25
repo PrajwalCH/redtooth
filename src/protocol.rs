@@ -26,6 +26,81 @@ pub fn device_address() -> DeviceAddress {
     DeviceAddress::new(ip_addr, TCP_PORT)
 }
 
+/// Represents possible errors that can occur when converting a slice of bytes into a [`FilePacket`].
+///
+/// This error is returned from the [`FilePacket::from_bytes`].
+pub enum FilePacketFromBytesError {
+    MissingSectionsSeparator,
+    DataHeaderParseError(DataHeaderParseError),
+}
+
+impl fmt::Display for FilePacketFromBytesError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use self::FilePacketFromBytesError::*;
+
+        match self {
+            MissingSectionsSeparator => {
+                write!(f, "Sections separator is missing from a file packet")
+            }
+            DataHeaderParseError(e) => {
+                write!(f, "Unable to parse the header of a file packet: {e}")
+            }
+        }
+    }
+}
+
+/// Represents a packet used for transferring files along with their associated metadata.
+///
+/// The file packet is divided into two sections separated by [`DATA_SECTIONS_SEPARATOR`]:
+///
+/// - **[`DataHeader`]:** The header holds the metadata or information associated with the file.
+///   This includes relevant details such as file name, size, checksum, etc.
+///
+/// - **Contents:** The contents section holds the actual data of the file to be transmitted.
+#[derive(Debug)]
+pub struct FilePacket {
+    /// The header information of the file packet.
+    pub header: DataHeader,
+    /// The contents of the file.
+    pub contents: Vec<u8>,
+}
+
+impl FilePacket {
+    /// Creates a new file packet with the given header and contents.
+    pub fn new(header: DataHeader, contents: Vec<u8>) -> FilePacket {
+        Self { header, contents }
+    }
+
+    /// Converts a slice of bytes into a file packet.
+    pub fn from_bytes(bytes: &[u8]) -> Result<FilePacket, FilePacketFromBytesError> {
+        let separator_len = DATA_SECTIONS_SEPARATOR.len();
+        let separator_index = bytes
+            .windows(separator_len)
+            .position(|bytes| bytes == DATA_SECTIONS_SEPARATOR)
+            .ok_or(FilePacketFromBytesError::MissingSectionsSeparator)?;
+
+        let header = std::str::from_utf8(&bytes[..separator_index]).unwrap_or_default();
+        let header =
+            DataHeader::from_str(header).map_err(FilePacketFromBytesError::DataHeaderParseError)?;
+        // Skip all the separator bytes.
+        let contents = bytes.get(separator_index + separator_len..);
+        // If a valid header and separator are present but the contents are missing,
+        // declare it as an empty.
+        let contents = contents.unwrap_or_default().to_owned();
+        Ok(Self { header, contents })
+    }
+
+    /// Converts a file packet into vector of bytes.
+    pub fn as_owned_bytes(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        let header = self.header.to_string();
+        bytes.extend_from_slice(header.as_bytes());
+        bytes.extend_from_slice(DATA_SECTIONS_SEPARATOR);
+        bytes.extend_from_slice(&self.contents);
+        bytes
+    }
+}
+
 /// An error returned from [`DataHeader::from_str`].
 pub enum DataHeaderParseError {
     MissingName,

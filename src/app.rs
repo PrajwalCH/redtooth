@@ -7,7 +7,7 @@ use std::thread::Builder as ThreadBuilder;
 
 use crate::discovery_server::DiscoveryServer;
 use crate::elogln;
-use crate::protocol::{self, DataHeader, DeviceAddress, DeviceID};
+use crate::protocol::{self, DeviceAddress, DeviceID, FilePacket};
 use crate::receiver;
 
 pub struct App {
@@ -52,8 +52,8 @@ impl App {
 
         while let Ok(event) = self.event_channel.receiver.recv() {
             match event {
-                Event::DataReceived(header, contents) => {
-                    if let Err(e) = self.write_data(header, contents) {
+                Event::DataReceived(data) => {
+                    if let Err(e) = self.write_data(data) {
                         elogln!("Encountered an error while writing data to the disk: {e}");
                     }
                 }
@@ -71,16 +71,16 @@ impl App {
         Ok(())
     }
 
-    /// Creates a file based on the provided header.
-    fn write_data(&self, header: DataHeader, contents: Vec<u8>) -> io::Result<()> {
-        let file_path = self.save_location.join(header.file_name);
-        fs::write(file_path, contents)
+    /// Creates a file based on the provided file packet.
+    fn write_data(&self, file_packet: FilePacket) -> io::Result<()> {
+        let file_path = self.save_location.join(file_packet.header.file_name);
+        fs::write(file_path, file_packet.contents)
     }
 }
 
 #[derive(Debug)]
 pub enum Event {
-    DataReceived(DataHeader, Vec<u8>),
+    DataReceived(FilePacket),
 }
 
 #[derive(Clone)]
