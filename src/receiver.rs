@@ -73,7 +73,7 @@ fn read_data_from_peer(mut stream: TcpStream) -> Result<(DataHeader, Vec<u8>), D
     // Skip all the separator bytes.
     let file_contents = data.get(separator_index + separator_len..);
     // If a valid header and separator are present but the contents are missing,
-    // declare it as a empty.
+    // declare it as an empty.
     let file_contents = file_contents.unwrap_or_default().to_owned();
     Ok((header, file_contents))
 }
