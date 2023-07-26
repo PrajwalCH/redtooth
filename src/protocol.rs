@@ -113,7 +113,7 @@ impl fmt::Display for FilePacketHeaderParseError {
         use self::FilePacketHeaderParseError::*;
 
         match self {
-            MissingName => write!(f, "Missing required `name` field"),
+            MissingName => write!(f, "missing required field `name`"),
         }
     }
 }
