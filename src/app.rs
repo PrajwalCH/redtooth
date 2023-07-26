@@ -10,6 +10,11 @@ use crate::elogln;
 use crate::protocol::{self, DeviceAddress, DeviceID, FilePacket};
 use crate::receiver;
 
+#[derive(Debug)]
+pub enum Event {
+    DataReceived(FilePacket),
+}
+
 pub struct App {
     device_id: DeviceID,
     device_address: DeviceAddress,
@@ -76,11 +81,6 @@ impl App {
         let file_path = self.save_location.join(file_packet.header.file_name);
         fs::write(file_path, file_packet.contents)
     }
-}
-
-#[derive(Debug)]
-pub enum Event {
-    DataReceived(FilePacket),
 }
 
 #[derive(Clone)]
