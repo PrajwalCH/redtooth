@@ -57,8 +57,8 @@ impl App {
 
         while let Ok(event) = self.event_channel.receiver.recv() {
             match event {
-                Event::FileReceived(data) => {
-                    if let Err(e) = self.write_data(data) {
+                Event::FileReceived(packet) => {
+                    if let Err(e) = self.write_file(packet) {
                         elogln!("Encountered an error while writing data to the disk: {e}");
                     }
                 }
@@ -77,9 +77,9 @@ impl App {
     }
 
     /// Creates a file based on the provided file packet.
-    fn write_data(&self, file_packet: FilePacket) -> io::Result<()> {
-        let file_path = self.save_location.join(file_packet.header.file_name);
-        fs::write(file_path, file_packet.contents)
+    fn write_file(&self, packet: FilePacket) -> io::Result<()> {
+        let file_path = self.save_location.join(packet.header.file_name);
+        fs::write(file_path, packet.contents)
     }
 }
 
