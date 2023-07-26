@@ -40,10 +40,10 @@ impl fmt::Display for FilePacketFromBytesError {
 
         match self {
             MissingSectionsSeparator => {
-                write!(f, "Sections separator is missing from a file packet")
+                write!(f, "missing sections separator")
             }
             HeaderParseError(e) => {
-                write!(f, "Unable to parse the header of a file packet: {e}")
+                write!(f, "couldn't parse the header: {e}")
             }
         }
     }
