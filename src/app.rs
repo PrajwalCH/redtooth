@@ -12,7 +12,7 @@ use crate::receiver;
 
 #[derive(Debug)]
 pub enum Event {
-    DataReceived(FilePacket),
+    FileReceived(FilePacket),
 }
 
 pub struct App {
@@ -57,7 +57,7 @@ impl App {
 
         while let Ok(event) = self.event_channel.receiver.recv() {
             match event {
-                Event::DataReceived(data) => {
+                Event::FileReceived(data) => {
                     if let Err(e) = self.write_data(data) {
                         elogln!("Encountered an error while writing data to the disk: {e}");
                     }

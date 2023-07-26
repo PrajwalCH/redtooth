@@ -12,7 +12,7 @@ pub fn start_file_receiving(addr: DeviceAddress, event_emitter: EventEmitter) ->
 
     for stream in listener.incoming().flatten() {
         match read_data_from_peer(stream) {
-            Ok(file_packet) => event_emitter.emit(Event::DataReceived(file_packet)),
+            Ok(file_packet) => event_emitter.emit(Event::FileReceived(file_packet)),
             Err(e) => elogln!("{e}"),
         }
     }
