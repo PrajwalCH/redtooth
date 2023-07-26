@@ -5,7 +5,7 @@ use std::net::TcpStream;
 use std::path::Path;
 
 use crate::logln;
-use crate::protocol::{DataHeader, DeviceAddress, FilePacket};
+use crate::protocol::{DeviceAddress, FilePacket, FilePacketHeader};
 
 pub fn send_file_to<P: AsRef<Path>>(addr: DeviceAddress, path: P) -> io::Result<()> {
     send_file_to_all(&[addr], path)
@@ -20,7 +20,7 @@ pub fn send_file_to_all<P: AsRef<Path>>(addrs: &[DeviceAddress], path: P) -> io:
         .unwrap_or(path.as_os_str())
         .to_string_lossy()
         .to_string();
-    let header = DataHeader { file_name };
+    let header = FilePacketHeader { file_name };
     let file_contents = fs::read(path)?;
     let data = FilePacket::new(header, file_contents).as_owned_bytes();
     logln!("Sending data of {} bytes", data.len());

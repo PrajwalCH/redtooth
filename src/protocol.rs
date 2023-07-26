@@ -31,7 +31,7 @@ pub fn device_address() -> DeviceAddress {
 /// This error is returned from the [`FilePacket::from_bytes`].
 pub enum FilePacketFromBytesError {
     MissingSectionsSeparator,
-    DataHeaderParseError(DataHeaderParseError),
+    HeaderParseError(FilePacketHeaderParseError),
 }
 
 impl fmt::Display for FilePacketFromBytesError {
@@ -42,7 +42,7 @@ impl fmt::Display for FilePacketFromBytesError {
             MissingSectionsSeparator => {
                 write!(f, "Sections separator is missing from a file packet")
             }
-            DataHeaderParseError(e) => {
+            HeaderParseError(e) => {
                 write!(f, "Unable to parse the header of a file packet: {e}")
             }
         }
@@ -53,21 +53,21 @@ impl fmt::Display for FilePacketFromBytesError {
 ///
 /// The file packet is divided into two sections separated by [`DATA_SECTIONS_SEPARATOR`]:
 ///
-/// - **[`DataHeader`]:** The header holds the metadata or information associated with the file.
+/// - **[`FilePacketHeader`]:** The header holds the metadata or information associated with the file.
 ///   This includes relevant details such as file name, size, checksum, etc.
 ///
 /// - **Contents:** The contents section holds the actual data of the file to be transmitted.
 #[derive(Debug)]
 pub struct FilePacket {
     /// The header information of the file packet.
-    pub header: DataHeader,
+    pub header: FilePacketHeader,
     /// The contents of the file.
     pub contents: Vec<u8>,
 }
 
 impl FilePacket {
     /// Creates a new file packet with the given header and contents.
-    pub fn new(header: DataHeader, contents: Vec<u8>) -> FilePacket {
+    pub fn new(header: FilePacketHeader, contents: Vec<u8>) -> FilePacket {
         Self { header, contents }
     }
 
@@ -80,8 +80,8 @@ impl FilePacket {
             .ok_or(FilePacketFromBytesError::MissingSectionsSeparator)?;
 
         let header = std::str::from_utf8(&bytes[..separator_index]).unwrap_or_default();
-        let header =
-            DataHeader::from_str(header).map_err(FilePacketFromBytesError::DataHeaderParseError)?;
+        let header = FilePacketHeader::from_str(header)
+            .map_err(FilePacketFromBytesError::HeaderParseError)?;
         // Skip all the separator bytes.
         let contents = bytes.get(separator_index + separator_len..);
         // If a valid header and separator are present but the contents are missing,
@@ -101,14 +101,16 @@ impl FilePacket {
     }
 }
 
-/// An error returned from [`DataHeader::from_str`].
-pub enum DataHeaderParseError {
+/// Represents possible errors that can occur when parsing a string to a [`FilePacketHeader`].
+///
+/// This error is returned from the [`FilePacketHeader::from_str`].
+pub enum FilePacketHeaderParseError {
     MissingName,
 }
 
-impl fmt::Display for DataHeaderParseError {
+impl fmt::Display for FilePacketHeaderParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use self::DataHeaderParseError::*;
+        use self::FilePacketHeaderParseError::*;
 
         match self {
             MissingName => write!(f, "Missing required `name` field"),
@@ -116,32 +118,32 @@ impl fmt::Display for DataHeaderParseError {
     }
 }
 
-/// Represents the header information for data being transmitted.
+/// Represents the header information for a file packet being transmitted.
 ///
 /// It encapsulates essential metadata about the file being sent.
 /// This header is pre-pended to the actual file data before transmission,
 /// allowing the receiver to correctly handle the incoming data.
 #[derive(Debug)]
-pub struct DataHeader {
+pub struct FilePacketHeader {
     /// The name of the file, including its extension.
-    pub(crate) file_name: String,
+    pub file_name: String,
 }
 
-impl FromStr for DataHeader {
-    type Err = DataHeaderParseError;
+impl FromStr for FilePacketHeader {
+    type Err = FilePacketHeaderParseError;
 
-    fn from_str(s: &str) -> Result<DataHeader, DataHeaderParseError> {
+    fn from_str(s: &str) -> Result<FilePacketHeader, FilePacketHeaderParseError> {
         let name = s
             .trim()
             .strip_prefix("file_name: ")
-            .ok_or(DataHeaderParseError::MissingName)?
+            .ok_or(FilePacketHeaderParseError::MissingName)?
             .to_string();
 
         Ok(Self { file_name: name })
     }
 }
 
-impl fmt::Display for DataHeader {
+impl fmt::Display for FilePacketHeader {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "file_name: {}", self.file_name)
     }
