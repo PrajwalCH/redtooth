@@ -10,7 +10,7 @@ use crate::interface;
 const TCP_PORT: u16 = 25802;
 /// Represents a separator used to distinguish sections, such as header and file contents
 /// of a file packet.
-pub const PACKET_SECTIONS_SEPARATOR: &[u8; 2] = b"::";
+const PACKET_SECTIONS_SEPARATOR: &[u8; 2] = b"::";
 
 pub type DeviceID = u64;
 pub type DeviceAddress = SocketAddr;
