@@ -14,12 +14,12 @@ pub fn start_file_receiving(addr: DeviceAddress, event_emitter: EventEmitter) ->
 
         match stream.read_to_end(&mut data) {
             Ok(data_len) => logln!("Received data of {data_len} bytes"),
-            Err(e) => elogln!("Unable to read data, {e}"),
+            Err(e) => elogln!("Couldn't read data from the stream: {e}"),
         };
 
         match FilePacket::from_bytes(&data) {
             Ok(file_packet) => event_emitter.emit(Event::FileReceived(file_packet)),
-            Err(e) => elogln!("{e}"),
+            Err(e) => elogln!("Received data isn't a valid file packet; {e}"),
         };
     }
     Ok(())
