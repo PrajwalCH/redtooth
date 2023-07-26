@@ -59,7 +59,10 @@ impl App {
             match event {
                 Event::FileReceived(packet) => {
                     if let Err(e) = self.write_file(packet) {
-                        elogln!("Encountered an error while writing data to the disk: {e}");
+                        elogln!(
+                            "Failed to create file in `{}`: {e}",
+                            self.save_location.display()
+                        );
                     }
                 }
             };
@@ -89,7 +92,7 @@ pub struct EventEmitter(Sender<Event>);
 impl EventEmitter {
     pub fn emit(&self, event: Event) {
         if let Err(SendError(event)) = self.0.send(event) {
-            elogln!("Failed to emit `{event:?}` due to listener being disconnected");
+            elogln!("Failed to emit event `{event:?}`: all the listeners are disconnected");
         }
     }
 }
