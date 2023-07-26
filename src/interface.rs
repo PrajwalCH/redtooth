@@ -30,13 +30,13 @@ impl InterfaceAddresses {
             libc::AF_INET => {
                 // Cast `sockaddr` to `sockaddr_in` to get the address bytes `u32`.
                 //
-                // Raw bytes are needed to convert them into correct network byte order before
+                // Raw bytes are needed to convert them into the correct network byte order before
                 // converting them into `Ipv4Addr`.
                 let socket_address = interface_address as *mut libc::sockaddr_in;
 
                 // Get the address bytes and convert them into network byte order by calling `to_be`.
                 //
-                // Without converting them into correct network byte order, the address would look
+                // Without converting them into the correct network byte order, the address would look
                 // like this `1.1.168.192` instead of `192.168.1.1`.
                 let address_bytes = unsafe { *socket_address }.sin_addr.s_addr.to_be();
                 Some(IpAddr::V4(Ipv4Addr::from(address_bytes)))
