@@ -1,49 +1,26 @@
-use std::fmt;
 use std::io::{self, Read};
-use std::net::{TcpListener, TcpStream};
+use std::net::TcpListener;
 
 use crate::app::{Event, EventEmitter};
-use crate::protocol::{DeviceAddress, FilePacket, FilePacketFromBytesError};
+use crate::protocol::{DeviceAddress, FilePacket};
 use crate::{elogln, logln};
 
 pub fn start_file_receiving(addr: DeviceAddress, event_emitter: EventEmitter) -> io::Result<()> {
     let listener = TcpListener::bind(addr)?;
     logln!("Receiving data on {addr}");
 
-    for stream in listener.incoming().flatten() {
-        match read_data_from_peer(stream) {
+    for mut stream in listener.incoming().flatten() {
+        let mut data: Vec<u8> = Vec::new();
+
+        match stream.read_to_end(&mut data) {
+            Ok(data_len) => logln!("Received data of {data_len} bytes"),
+            Err(e) => elogln!("Unable to read data, {e}"),
+        };
+
+        match FilePacket::from_bytes(&data) {
             Ok(file_packet) => event_emitter.emit(Event::FileReceived(file_packet)),
             Err(e) => elogln!("{e}"),
-        }
+        };
     }
     Ok(())
-}
-
-enum DataReadError {
-    DataParseError(FilePacketFromBytesError),
-    IoError(io::Error),
-}
-
-impl fmt::Display for DataReadError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use self::DataReadError::*;
-
-        match self {
-            DataParseError(e) => {
-                write!(f, "{e}")
-            }
-            IoError(e) => write!(f, "Unable to read data properly: {e}"),
-        }
-    }
-}
-
-fn read_data_from_peer(mut stream: TcpStream) -> Result<FilePacket, DataReadError> {
-    let mut data: Vec<u8> = Vec::new();
-    let data_len = stream
-        .read_to_end(&mut data)
-        .map_err(DataReadError::IoError)?;
-    logln!("Received data of {data_len} bytes");
-
-    let data = FilePacket::from_bytes(&data).map_err(DataReadError::DataParseError)?;
-    Ok(data)
 }
