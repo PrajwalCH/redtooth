@@ -8,9 +8,9 @@ use std::time::Instant;
 use crate::interface;
 
 const TCP_PORT: u16 = 25802;
-/// The data sections separator used to distinguish sections (e.g., header and file contents)
-/// within a data stream.
-pub const DATA_SECTIONS_SEPARATOR: &[u8; 2] = b"::";
+/// Represents a separator used to distinguish sections, such as header and file contents
+/// of a file packet.
+pub const PACKET_SECTIONS_SEPARATOR: &[u8; 2] = b"::";
 
 pub type DeviceID = u64;
 pub type DeviceAddress = SocketAddr;
@@ -51,7 +51,7 @@ impl fmt::Display for FilePacketFromBytesError {
 
 /// Represents a packet used for transferring files along with their associated metadata.
 ///
-/// The file packet is divided into two sections separated by [`DATA_SECTIONS_SEPARATOR`]:
+/// The file packet is divided into two sections separated by [`PACKET_SECTIONS_SEPARATOR`]:
 ///
 /// - **[`FilePacketHeader`]:** The header holds the metadata or information associated with the file.
 ///   This includes relevant details such as file name, size, checksum, etc.
@@ -73,10 +73,10 @@ impl FilePacket {
 
     /// Converts a slice of bytes into a file packet.
     pub fn from_bytes(bytes: &[u8]) -> Result<FilePacket, FilePacketFromBytesError> {
-        let separator_len = DATA_SECTIONS_SEPARATOR.len();
+        let separator_len = PACKET_SECTIONS_SEPARATOR.len();
         let separator_index = bytes
             .windows(separator_len)
-            .position(|bytes| bytes == DATA_SECTIONS_SEPARATOR)
+            .position(|bytes| bytes == PACKET_SECTIONS_SEPARATOR)
             .ok_or(FilePacketFromBytesError::MissingSectionsSeparator)?;
 
         let header = std::str::from_utf8(&bytes[..separator_index]).unwrap_or_default();
@@ -95,7 +95,7 @@ impl FilePacket {
         let mut bytes = Vec::new();
         let header = self.header.to_string();
         bytes.extend_from_slice(header.as_bytes());
-        bytes.extend_from_slice(DATA_SECTIONS_SEPARATOR);
+        bytes.extend_from_slice(PACKET_SECTIONS_SEPARATOR);
         bytes.extend_from_slice(&self.contents);
         bytes
     }
