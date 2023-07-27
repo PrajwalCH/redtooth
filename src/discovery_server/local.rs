@@ -66,7 +66,7 @@ fn discover_devices(device_map: Arc<Mutex<DeviceMap>>) -> io::Result<()> {
             };
             device_map.insert(id, address);
         }
-        logln!("New announcement `[{id}];[{address}]`");
+        logln!("Discovered `{address}`");
     }
 }
 
