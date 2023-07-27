@@ -105,7 +105,7 @@ impl FilePacket {
 ///
 /// This error is returned from the [`FilePacketHeader::from_str`].
 pub enum FilePacketHeaderParseError {
-    MissingName,
+    MissingFileName,
 }
 
 impl fmt::Display for FilePacketHeaderParseError {
@@ -113,7 +113,7 @@ impl fmt::Display for FilePacketHeaderParseError {
         use self::FilePacketHeaderParseError::*;
 
         match self {
-            MissingName => write!(f, "missing required field `name`"),
+            MissingFileName => write!(f, "missing required field `file_name`"),
         }
     }
 }
@@ -136,7 +136,7 @@ impl FromStr for FilePacketHeader {
         let name = s
             .trim()
             .strip_prefix("file_name: ")
-            .ok_or(FilePacketHeaderParseError::MissingName)?
+            .ok_or(FilePacketHeaderParseError::MissingFileName)?
             .to_string();
 
         Ok(Self { file_name: name })
