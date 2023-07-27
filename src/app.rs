@@ -55,34 +55,17 @@ impl App {
         self.discovery_server
             .announce_device(self.device_id, self.device_address)?;
 
-        while let Ok(event) = self.event_channel.receiver.recv() {
-            match event {
-                Event::FileReceived(packet) => {
-                    if let Err(e) = self.write_file(packet) {
-                        elogln!(
-                            "Failed to create file in `{}`: {e}",
-                            self.save_location.display()
-                        );
-                    }
-                }
-            };
-        }
-        Ok(())
+        // TODO: Implement either ipc or http api server so that both cli and web ui can talk.
+        loop {}
     }
 
     /// Starts a TCP server for receiving data.
     fn start_data_receiver(&self) -> io::Result<()> {
         let receiving_addr = self.device_address;
-        let event_emitter = self.event_emitter();
+        let save_location = self.save_location.clone();
         let builder = ThreadBuilder::new().name(String::from("data_receiver"));
-        builder.spawn(move || receiver::start_file_receiving(receiving_addr, event_emitter))?;
+        builder.spawn(move || receiver::start_file_receiving(receiving_addr, save_location))?;
         Ok(())
-    }
-
-    /// Creates a file based on the provided file packet.
-    fn write_file(&self, packet: FilePacket) -> io::Result<()> {
-        let file_path = self.save_location.join(packet.header.file_name);
-        fs::write(file_path, packet.contents)
     }
 }
 
