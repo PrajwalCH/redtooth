@@ -31,7 +31,7 @@ pub fn announce_device(id: DeviceID, address: DeviceAddress) -> io::Result<()> {
     Ok(())
 }
 
-/// Starts listening for an **announcement** packet on the local network.
+/// Starts listening for an **announcement** a packet on the local network.
 fn discover_devices(device_map: Arc<Mutex<DeviceMap>>) -> io::Result<()> {
     let socket = UdpSocket::bind(("0.0.0.0", MULTICAST_PORT))?;
     // socket.set_read_timeout(Some(Duration::from_millis(20)))?;
