@@ -1,4 +1,5 @@
 mod app;
+mod cli;
 mod discovery_server;
 mod interface;
 mod macros;

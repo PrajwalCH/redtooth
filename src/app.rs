@@ -1,10 +1,11 @@
 use std::env;
-use std::fs;
-use std::io;
+use std::io::{self, Write};
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, SendError, Sender};
-use std::thread::Builder as ThreadBuilder;
+use std::thread::{self, Builder as ThreadBuilder};
+use std::time::Duration;
 
+use crate::cli::{self, Command};
 use crate::discovery_server::DiscoveryServer;
 use crate::elogln;
 use crate::protocol::{self, DeviceAddress, DeviceID, FilePacket};
@@ -55,8 +56,33 @@ impl App {
         self.discovery_server
             .announce_device(self.device_id, self.device_address)?;
 
+        // Wait for a short duration to allow other threads to fully start up.
+        thread::sleep(Duration::from_millis(20));
         // TODO: Implement either ipc or http api server so that both cli and web ui can talk.
-        loop {}
+        let mut cli_input_buffer = String::new();
+
+        loop {
+            cli_input_buffer.clear();
+            print!("> ");
+            io::stdout().flush()?;
+
+            let Ok(cmd) = cli::read_command(&mut cli_input_buffer) else {
+                 continue;
+            };
+
+            match cmd {
+                Command::MyIp => {
+                    println!("{}", self.device_address.ip());
+                }
+                // TODO: Implement an API on the discovery server for further functionality.
+                Command::List => println!("List"),
+                // TODO: Implement an API on the discovery server for further functionality.
+                Command::Send(_) => println!("Send file to all"),
+                // TODO: Implement an API on the discovery server for further functionality.
+                Command::SendTo(_, _) => println!("Send file to given address"),
+                Command::Unknown => println!("Unknown command"),
+            }
+        }
     }
 
     /// Starts a TCP server for receiving data.
