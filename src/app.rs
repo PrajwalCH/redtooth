@@ -37,7 +37,7 @@ impl App {
     ///
     /// **NOTE:** This function always blocks the current thread.
     pub fn run(&mut self) -> io::Result<()> {
-        self.start_data_receiver()?;
+        self.spawn_file_receiver()?;
         self.discovery_server.start()?;
         self.discovery_server
             .announce_device(self.device_id, self.device_address)?;
@@ -59,11 +59,10 @@ impl App {
         }
     }
 
-    /// Starts a TCP server for receiving data.
-    fn start_data_receiver(&self) -> io::Result<()> {
+    fn spawn_file_receiver(&self) -> io::Result<()> {
         let receiving_addr = self.device_address;
         let save_location = self.save_location.clone();
-        let builder = ThreadBuilder::new().name(String::from("data_receiver"));
+        let builder = ThreadBuilder::new().name(String::from("file_receiver"));
         builder.spawn(move || receiver::receive_files(receiving_addr, save_location))?;
         Ok(())
     }
