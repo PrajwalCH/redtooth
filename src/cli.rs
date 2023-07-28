@@ -3,13 +3,13 @@ use std::net::Ipv4Addr;
 use std::str::FromStr;
 
 pub enum Command {
-    /// Not a known command.
+    /// Unknown or unrecognized command
     Unknown,
-    /// Show the IP address of the device.
+    /// Display the IP address of the current device.
     MyIp,
     /// Display the identifiers of all the discovered devices.
     List,
-    /// Send a file to all the addresses of the devices.
+    /// Send a file to all the devices.
     Send(String),
     /// Send a file to the given address of a device.
     SendTo(String, Ipv4Addr),
