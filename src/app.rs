@@ -7,7 +7,7 @@ use std::time::Duration;
 use crate::cli::{self, Command};
 use crate::discovery_server::DiscoveryServer;
 use crate::protocol::{self, DeviceAddress, DeviceID};
-use crate::{receiver, sender};
+use crate::{elogln, receiver, sender};
 
 pub struct App {
     device_id: DeviceID,
@@ -52,42 +52,9 @@ impl App {
             print!("> ");
             io::stdout().flush()?;
 
-            let Ok(cmd) = cli::read_command(&mut cli_input_buffer) else {
-                 continue;
-            };
-
-            match cmd {
-                Command::MyIp => {
-                    println!("{}", self.device_address.ip());
-                }
-                Command::List => {
-                    if let Some(ids) = self.discovery_server.get_discovered_device_ids() {
-                        for id in ids {
-                            println!("{id}");
-                        }
-                        continue;
-                    }
-                    println!("No devices found");
-                }
-                Command::Send(file_path) => {
-                    let Some(addrs) = self.discovery_server.get_discovered_device_addrs() else {
-                        println!("No devices found");
-                        continue;
-                    };
-                    if let Err(e) = sender::send_file_to_all(&addrs, file_path) {
-                        eprintln!("Failed to send file: {e}");
-                    }
-                }
-                Command::SendTo(device_id, file_path) => {
-                    let Some(addr) = self.discovery_server.find_device_addr_by_id(device_id) else {
-                        println!("No devices found that matches the given identifier");
-                        continue;
-                    };
-                    if let Err(e) = sender::send_file_to(addr, file_path) {
-                        eprintln!("Failed to send file: {e}");
-                    }
-                }
-                Command::Unknown => println!("Unknown command"),
+            match cli::read_command(&mut cli_input_buffer) {
+                Ok(c) => self.handle_cli_command(c),
+                Err(e) => elogln!("Failed to read input: {e}"),
             }
         }
     }
@@ -99,5 +66,41 @@ impl App {
         let builder = ThreadBuilder::new().name(String::from("data_receiver"));
         builder.spawn(move || receiver::start_file_receiving(receiving_addr, save_location))?;
         Ok(())
+    }
+
+    fn handle_cli_command(&self, cmd: Command) {
+        match cmd {
+            Command::MyIp => {
+                println!("{}", self.device_address.ip());
+            }
+            Command::List => {
+                if let Some(ids) = self.discovery_server.get_discovered_device_ids() {
+                    for id in ids {
+                        println!("{id}");
+                    }
+                    return;
+                }
+                println!("No devices found");
+            }
+            Command::Send(file_path) => {
+                let Some(addrs) = self.discovery_server.get_discovered_device_addrs() else {
+                    println!("No devices found");
+                    return;
+                };
+                if let Err(e) = sender::send_file_to_all(&addrs, file_path) {
+                    eprintln!("Failed to send file: {e}");
+                }
+            }
+            Command::SendTo(device_id, file_path) => {
+                let Some(addr) = self.discovery_server.find_device_addr_by_id(device_id) else {
+                    println!("No devices found that matches the given identifier");
+                    return;
+                };
+                if let Err(e) = sender::send_file_to(addr, file_path) {
+                    eprintln!("Failed to send file: {e}");
+                }
+            }
+            Command::Unknown => println!("Unknown command"),
+        }
     }
 }
