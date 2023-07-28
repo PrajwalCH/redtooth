@@ -7,7 +7,7 @@ pub enum Command {
     Unknown,
     /// Show the IP address of the device.
     MyIp,
-    /// Display all the discovered devices address.
+    /// Display the identifiers of all the discovered devices.
     List,
     /// Send a file to all the addresses of the devices.
     Send(String),
