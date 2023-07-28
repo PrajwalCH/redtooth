@@ -27,8 +27,8 @@ pub fn read_command(input_buffer: &mut String) -> io::Result<Command> {
         "list" => Command::List,
         "send" => Command::Send(it.next().unwrap().trim().to_string()),
         "sendto" => {
-            let device_id = it.next().unwrap().parse::<DeviceID>().unwrap();
-            let file_path = it.next().unwrap().to_string();
+            let device_id = it.next().unwrap().trim().parse::<DeviceID>().unwrap();
+            let file_path = it.next().unwrap().trim().to_string();
             Command::SendTo(device_id, file_path)
         }
         _ => Command::Unknown,
