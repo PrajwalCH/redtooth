@@ -6,7 +6,9 @@ use std::path::{Path, PathBuf};
 use crate::protocol::{DeviceAddress, FilePacket};
 use crate::{elogln, logln};
 
-pub fn start_file_receiving(addr: DeviceAddress, save_location: PathBuf) -> io::Result<()> {
+/// Starts receiving files on the `addr` and upon successful reception saves them
+/// to the given location.
+pub fn receive_files(addr: DeviceAddress, save_location: PathBuf) -> io::Result<()> {
     let listener = TcpListener::bind(addr)?;
     logln!("Receiving data on {addr}");
 

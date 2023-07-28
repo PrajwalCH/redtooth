@@ -64,7 +64,7 @@ impl App {
         let receiving_addr = self.device_address;
         let save_location = self.save_location.clone();
         let builder = ThreadBuilder::new().name(String::from("data_receiver"));
-        builder.spawn(move || receiver::start_file_receiving(receiving_addr, save_location))?;
+        builder.spawn(move || receiver::receive_files(receiving_addr, save_location))?;
         Ok(())
     }
 
