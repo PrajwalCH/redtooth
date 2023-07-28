@@ -61,9 +61,9 @@ impl App {
                     println!("{}", self.device_address.ip());
                 }
                 Command::List => {
-                    if let Some(devices_id) = self.discovery_server.get_discovered_device_ids() {
-                        for device_id in devices_id {
-                            println!("{device_id}");
+                    if let Some(ids) = self.discovery_server.get_discovered_device_ids() {
+                        for id in ids {
+                            println!("{id}");
                         }
                         continue;
                     }
