@@ -1,26 +1,17 @@
 use std::env;
 use std::io::{self, Write};
 use std::path::PathBuf;
-use std::sync::mpsc::{self, Receiver, SendError, Sender};
 use std::thread::{self, Builder as ThreadBuilder};
 use std::time::Duration;
 
 use crate::cli::{self, Command};
 use crate::discovery_server::DiscoveryServer;
-use crate::elogln;
-use crate::protocol::{self, DeviceAddress, DeviceID, FilePacket};
-use crate::receiver;
-use crate::sender;
-
-#[derive(Debug)]
-pub enum Event {
-    FileReceived(FilePacket),
-}
+use crate::protocol::{self, DeviceAddress, DeviceID};
+use crate::{receiver, sender};
 
 pub struct App {
     device_id: DeviceID,
     device_address: DeviceAddress,
-    event_channel: EventChannel,
     discovery_server: DiscoveryServer,
     /// Path where the received file will be saved.
     save_location: PathBuf,
@@ -37,15 +28,9 @@ impl App {
         App {
             device_id: protocol::device_id(),
             device_address: protocol::device_address(),
-            event_channel: EventChannel::new(),
             discovery_server: DiscoveryServer::new(),
             save_location: PathBuf::from(home_path),
         }
-    }
-
-    /// Returns the [`EventEmitter`] that can be used to send events to application's event loop.
-    pub fn event_emitter(&self) -> EventEmitter {
-        EventEmitter(self.event_channel.sender.clone())
     }
 
     /// Starts the main event loop.
@@ -114,28 +99,5 @@ impl App {
         let builder = ThreadBuilder::new().name(String::from("data_receiver"));
         builder.spawn(move || receiver::start_file_receiving(receiving_addr, save_location))?;
         Ok(())
-    }
-}
-
-#[derive(Clone)]
-pub struct EventEmitter(Sender<Event>);
-
-impl EventEmitter {
-    pub fn emit(&self, event: Event) {
-        if let Err(SendError(event)) = self.0.send(event) {
-            elogln!("Failed to emit event `{event:?}`: all the listeners are disconnected");
-        }
-    }
-}
-
-struct EventChannel {
-    sender: Sender<Event>,
-    receiver: Receiver<Event>,
-}
-
-impl EventChannel {
-    pub fn new() -> EventChannel {
-        let (sender, receiver) = mpsc::channel::<Event>();
-        EventChannel { sender, receiver }
     }
 }
