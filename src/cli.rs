@@ -1,6 +1,7 @@
-use std::io::{self, BufRead};
-use std::net::Ipv4Addr;
-use std::str::FromStr;
+use std::io;
+use std::io::BufRead;
+
+use crate::protocol::DeviceID;
 
 pub enum Command {
     /// Unknown or unrecognized command
@@ -11,8 +12,8 @@ pub enum Command {
     List,
     /// Send a file to all the devices.
     Send(String),
-    /// Send a file to the given address of a device.
-    SendTo(String, Ipv4Addr),
+    /// Send a file to the device that matches the given identifier.
+    SendTo(DeviceID, String),
 }
 
 pub fn read_command(input_buffer: &mut String) -> io::Result<Command> {
@@ -26,9 +27,9 @@ pub fn read_command(input_buffer: &mut String) -> io::Result<Command> {
         "list" => Command::List,
         "send" => Command::Send(it.next().unwrap().trim().to_string()),
         "sendto" => {
-            let file_path = it.next().unwrap().trim().to_string();
-            let device_addr = Ipv4Addr::from_str(it.next().unwrap().trim()).unwrap();
-            Command::SendTo(file_path, device_addr)
+            let device_id = it.next().unwrap().parse::<DeviceID>().unwrap();
+            let file_path = it.next().unwrap().to_string();
+            Command::SendTo(device_id, file_path)
         }
         _ => Command::Unknown,
     };
