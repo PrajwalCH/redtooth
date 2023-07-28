@@ -10,6 +10,7 @@ use crate::discovery_server::DiscoveryServer;
 use crate::elogln;
 use crate::protocol::{self, DeviceAddress, DeviceID, FilePacket};
 use crate::receiver;
+use crate::sender;
 
 #[derive(Debug)]
 pub enum Event {
@@ -74,12 +75,33 @@ impl App {
                 Command::MyIp => {
                     println!("{}", self.device_address.ip());
                 }
-                // TODO: Implement an API on the discovery server for further functionality.
-                Command::List => println!("List"),
-                // TODO: Implement an API on the discovery server for further functionality.
-                Command::Send(_) => println!("Send file to all"),
-                // TODO: Implement an API on the discovery server for further functionality.
-                Command::SendTo(_, _) => println!("Send file to given address"),
+                Command::List => {
+                    if let Some(devices_id) = self.discovery_server.get_discovered_device_ids() {
+                        for device_id in devices_id {
+                            println!("{device_id}");
+                        }
+                        continue;
+                    }
+                    println!("No devices found");
+                }
+                Command::Send(file_path) => {
+                    let Some(addrs) = self.discovery_server.get_discovered_device_addresses() else {
+                        println!("No devices found");
+                        continue;
+                    };
+                    if let Err(e) = sender::send_file_to_all(&addrs, &file_path) {
+                        eprintln!("Failed to send file: {e}");
+                    }
+                }
+                Command::SendTo(device_id, file_path) => {
+                    let Some(addr) = self.discovery_server.find_device_address_by_id(device_id) else {
+                        println!("No devices found that matches the given identifier");
+                        continue;
+                    };
+                    if let Err(e) = sender::send_file_to(addr, &file_path) {
+                        eprintln!("Failed to send file: {e}");
+                    }
+                }
                 Command::Unknown => println!("Unknown command"),
             }
         }
