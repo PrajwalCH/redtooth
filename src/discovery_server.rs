@@ -36,4 +36,26 @@ impl DiscoveryServer {
     pub fn announce_device(&self, id: DeviceID, address: DeviceAddress) -> io::Result<()> {
         local::announce_device(id, address)
     }
+
+    /// Returns the identifiers of all the discovered devices.
+    pub fn get_discovered_device_ids(&self) -> Option<Vec<DeviceID>> {
+        self.discovered_devices.lock().ok().and_then(|device_map| {
+            (!device_map.is_empty()).then(|| device_map.keys().copied().collect())
+        })
+    }
+
+    /// Returns a list of addresses for all the discovered devices.
+    pub fn get_discovered_device_addresses(&self) -> Option<Vec<DeviceAddress>> {
+        self.discovered_devices.lock().ok().and_then(|device_map| {
+            (!device_map.is_empty()).then(|| device_map.values().copied().collect())
+        })
+    }
+
+    /// Returns the address of a specific device that matches the given identifier.
+    pub fn find_device_address_by_id(&self, id: DeviceID) -> Option<DeviceAddress> {
+        self.discovered_devices
+            .lock()
+            .ok()
+            .and_then(|device_map| device_map.get(&id).copied())
+    }
 }
