@@ -74,7 +74,7 @@ impl App {
                         println!("No devices found");
                         continue;
                     };
-                    if let Err(e) = sender::send_file_to_all(&addrs, &file_path) {
+                    if let Err(e) = sender::send_file_to_all(&addrs, file_path) {
                         eprintln!("Failed to send file: {e}");
                     }
                 }
@@ -83,7 +83,7 @@ impl App {
                         println!("No devices found that matches the given identifier");
                         continue;
                     };
-                    if let Err(e) = sender::send_file_to(addr, &file_path) {
+                    if let Err(e) = sender::send_file_to(addr, file_path) {
                         eprintln!("Failed to send file: {e}");
                     }
                 }

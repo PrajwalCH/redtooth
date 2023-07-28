@@ -3,7 +3,7 @@ use std::io::BufRead;
 
 use crate::protocol::DeviceID;
 
-pub enum Command {
+pub enum Command<'buf> {
     /// Unknown or unrecognized command
     Unknown,
     /// Display the IP address of the current device.
@@ -11,9 +11,9 @@ pub enum Command {
     /// Display the identifiers of all the discovered devices.
     List,
     /// Send a file to all the devices.
-    Send(String),
+    Send(&'buf str),
     /// Send a file to the device that matches the given identifier.
-    SendTo(DeviceID, String),
+    SendTo(DeviceID, &'buf str),
 }
 
 pub fn read_command(input_buffer: &mut String) -> io::Result<Command> {
@@ -25,10 +25,10 @@ pub fn read_command(input_buffer: &mut String) -> io::Result<Command> {
     let command = match command {
         "myip" => Command::MyIp,
         "list" => Command::List,
-        "send" => Command::Send(it.next().unwrap().trim().to_string()),
+        "send" => Command::Send(it.next().unwrap().trim()),
         "sendto" => {
             let device_id = it.next().unwrap().trim().parse::<DeviceID>().unwrap();
-            let file_path = it.next().unwrap().trim().to_string();
+            let file_path = it.next().unwrap().trim();
             Command::SendTo(device_id, file_path)
         }
         _ => Command::Unknown,
