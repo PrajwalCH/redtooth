@@ -85,7 +85,7 @@ impl App {
                     println!("No devices found");
                 }
                 Command::Send(file_path) => {
-                    let Some(addrs) = self.discovery_server.get_discovered_device_addresses() else {
+                    let Some(addrs) = self.discovery_server.get_discovered_device_addrs() else {
                         println!("No devices found");
                         continue;
                     };
@@ -94,7 +94,7 @@ impl App {
                     }
                 }
                 Command::SendTo(device_id, file_path) => {
-                    let Some(addr) = self.discovery_server.find_device_address_by_id(device_id) else {
+                    let Some(addr) = self.discovery_server.find_device_addr_by_id(device_id) else {
                         println!("No devices found that matches the given identifier");
                         continue;
                     };

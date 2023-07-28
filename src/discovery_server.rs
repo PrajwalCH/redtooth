@@ -45,14 +45,14 @@ impl DiscoveryServer {
     }
 
     /// Returns a list of addresses for all the discovered devices.
-    pub fn get_discovered_device_addresses(&self) -> Option<Vec<DeviceAddress>> {
+    pub fn get_discovered_device_addrs(&self) -> Option<Vec<DeviceAddress>> {
         self.discovered_devices.lock().ok().and_then(|device_map| {
             (!device_map.is_empty()).then(|| device_map.values().copied().collect())
         })
     }
 
     /// Returns the address of a specific device that matches the given identifier.
-    pub fn find_device_address_by_id(&self, id: DeviceID) -> Option<DeviceAddress> {
+    pub fn find_device_addr_by_id(&self, id: DeviceID) -> Option<DeviceAddress> {
         self.discovered_devices
             .lock()
             .ok()
