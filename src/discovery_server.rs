@@ -27,7 +27,7 @@ impl DiscoveryServer {
 
     /// Starts a server for discovering devices on either local or global or both networks.
     pub fn start(&mut self) -> io::Result<()> {
-        let thread_handle = local::start(Arc::clone(&self.discovered_devices))?;
+        let thread_handle = local::spawn(Arc::clone(&self.discovered_devices))?;
         self.local_server_handle = Some(thread_handle);
         Ok(())
     }

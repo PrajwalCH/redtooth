@@ -14,8 +14,8 @@ use crate::{elogln, logln};
 const MULTICAST_ADDRESS: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 251);
 const MULTICAST_PORT: u16 = 20581;
 
-/// Starts a server for discovering devices on the local network.
-pub fn start(device_map: Arc<Mutex<DeviceMap>>) -> io::Result<ThreadHandle> {
+/// Spawns a local server.
+pub fn spawn(device_map: Arc<Mutex<DeviceMap>>) -> io::Result<ThreadHandle> {
     let builder = ThreadBuilder::new().name(String::from("local discovery"));
     builder.spawn(move || discover_devices(device_map))
 }
