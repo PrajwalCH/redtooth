@@ -5,7 +5,7 @@ use std::thread::{self, Builder as ThreadBuilder};
 use std::time::Duration;
 
 use crate::cli::{self, Command};
-use crate::discovery_server::PeerDiscoverer;
+use crate::peer_discoverer::PeerDiscoverer;
 use crate::protocol::{self, PeerAddr, PeerID};
 use crate::{elogln, receiver, sender};
 

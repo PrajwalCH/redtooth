@@ -1,8 +1,8 @@
 mod app;
 mod cli;
-mod discovery_server;
 mod interface;
 mod macros;
+mod peer_discoverer;
 mod protocol;
 mod receiver;
 mod sender;

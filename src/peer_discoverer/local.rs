@@ -1,4 +1,4 @@
-//! A local discovery server.
+//! A local peer discoverer.
 
 use std::io;
 use std::net::{Ipv4Addr, UdpSocket};
