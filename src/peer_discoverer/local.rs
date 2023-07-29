@@ -34,7 +34,6 @@ pub fn announce_peer(id: PeerID, addr: PeerAddr) -> io::Result<()> {
 /// Starts listening for an **announcement** a packet on the local network.
 fn discover_peers(peer_map: Arc<Mutex<PeerMap>>) -> io::Result<()> {
     let socket = UdpSocket::bind(("0.0.0.0", MULTICAST_PORT))?;
-    // socket.set_read_timeout(Some(Duration::from_millis(20)))?;
     socket.join_multicast_v4(&MULTICAST_ADDR, &Ipv4Addr::UNSPECIFIED)?;
     logln!("Listening for new announcement on {}", socket.local_addr()?);
 
