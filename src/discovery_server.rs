@@ -12,13 +12,13 @@ type PeerMap = HashMap<PeerID, PeerAddr>;
 type ThreadHandle = JoinHandle<io::Result<()>>;
 
 #[allow(dead_code)]
-pub struct DiscoveryServer {
+pub struct PeerDiscoverer {
     peers: Arc<Mutex<PeerMap>>,
     local_server_handle: Option<ThreadHandle>,
 }
 
-impl DiscoveryServer {
-    pub fn new() -> DiscoveryServer {
+impl PeerDiscoverer {
+    pub fn new() -> PeerDiscoverer {
         Self {
             peers: Arc::new(Mutex::new(PeerMap::new())),
             local_server_handle: None,

@@ -5,14 +5,14 @@ use std::thread::{self, Builder as ThreadBuilder};
 use std::time::Duration;
 
 use crate::cli::{self, Command};
-use crate::discovery_server::DiscoveryServer;
+use crate::discovery_server::PeerDiscoverer;
 use crate::protocol::{self, PeerAddr, PeerID};
 use crate::{elogln, receiver, sender};
 
 pub struct App {
     my_id: PeerID,
     my_addr: PeerAddr,
-    discovery_server: DiscoveryServer,
+    peer_discoverer: PeerDiscoverer,
     /// Path where the received file will be saved.
     save_location: PathBuf,
 }
@@ -28,7 +28,7 @@ impl App {
         App {
             my_id: protocol::get_my_id(),
             my_addr: protocol::get_my_addr(),
-            discovery_server: DiscoveryServer::new(),
+            peer_discoverer: PeerDiscoverer::new(),
             save_location: PathBuf::from(home_path),
         }
     }
@@ -38,8 +38,8 @@ impl App {
     /// **NOTE:** This function always blocks the current thread.
     pub fn run(&mut self) -> io::Result<()> {
         self.spawn_file_receiver()?;
-        self.discovery_server.start()?;
-        self.discovery_server
+        self.peer_discoverer.start()?;
+        self.peer_discoverer
             .announce_peer(self.my_id, self.my_addr)?;
 
         // Wait for a short duration to allow other threads to fully start up.
@@ -73,7 +73,7 @@ impl App {
                 println!("{}", self.my_addr.ip());
             }
             Command::List => {
-                if let Some(ids) = self.discovery_server.get_discovered_peer_ids() {
+                if let Some(ids) = self.peer_discoverer.get_discovered_peer_ids() {
                     for id in ids {
                         println!("{id}");
                     }
@@ -82,7 +82,7 @@ impl App {
                 println!("No peers found");
             }
             Command::Send(file_path) => {
-                let Some(addrs) = self.discovery_server.get_discovered_peer_addrs() else {
+                let Some(addrs) = self.peer_discoverer.get_discovered_peer_addrs() else {
                     println!("No peers found");
                     return;
                 };
@@ -91,7 +91,7 @@ impl App {
                 }
             }
             Command::SendTo(peer_id, file_path) => {
-                let Some(addr) = self.discovery_server.find_peer_addr_by_id(peer_id) else {
+                let Some(addr) = self.peer_discoverer.find_peer_addr_by_id(peer_id) else {
                     println!("No peers found that matches the given identifier");
                     return;
                 };
