@@ -6,12 +6,12 @@ use std::time::Duration;
 
 use crate::cli::{self, Command};
 use crate::discovery_server::DiscoveryServer;
-use crate::protocol::{self, DeviceAddress, DeviceID};
+use crate::protocol::{self, PeerAddr, PeerID};
 use crate::{elogln, receiver, sender};
 
 pub struct App {
-    device_id: DeviceID,
-    device_address: DeviceAddress,
+    my_id: PeerID,
+    my_addr: PeerAddr,
     discovery_server: DiscoveryServer,
     /// Path where the received file will be saved.
     save_location: PathBuf,
@@ -26,8 +26,8 @@ impl App {
         );
 
         App {
-            device_id: protocol::device_id(),
-            device_address: protocol::device_address(),
+            my_id: protocol::get_my_id(),
+            my_addr: protocol::get_my_addr(),
             discovery_server: DiscoveryServer::new(),
             save_location: PathBuf::from(home_path),
         }
@@ -40,7 +40,7 @@ impl App {
         self.spawn_file_receiver()?;
         self.discovery_server.start()?;
         self.discovery_server
-            .announce_device(self.device_id, self.device_address)?;
+            .announce_peer(self.my_id, self.my_addr)?;
 
         // Wait for a short duration to allow other threads to fully start up.
         thread::sleep(Duration::from_millis(20));
@@ -60,7 +60,7 @@ impl App {
     }
 
     fn spawn_file_receiver(&self) -> io::Result<()> {
-        let receiving_addr = self.device_address;
+        let receiving_addr = self.my_addr;
         let save_location = self.save_location.clone();
         let builder = ThreadBuilder::new().name(String::from("file_receiver"));
         builder.spawn(move || receiver::receive_files(receiving_addr, save_location))?;
@@ -70,29 +70,29 @@ impl App {
     fn handle_cli_command(&self, cmd: Command) {
         match cmd {
             Command::MyIp => {
-                println!("{}", self.device_address.ip());
+                println!("{}", self.my_addr.ip());
             }
             Command::List => {
-                if let Some(ids) = self.discovery_server.get_discovered_device_ids() {
+                if let Some(ids) = self.discovery_server.get_discovered_peer_ids() {
                     for id in ids {
                         println!("{id}");
                     }
                     return;
                 }
-                println!("No devices found");
+                println!("No peers found");
             }
             Command::Send(file_path) => {
-                let Some(addrs) = self.discovery_server.get_discovered_device_addrs() else {
-                    println!("No devices found");
+                let Some(addrs) = self.discovery_server.get_discovered_peer_addrs() else {
+                    println!("No peers found");
                     return;
                 };
                 if let Err(e) = sender::send_file_to_all(&addrs, file_path) {
                     eprintln!("Failed to send file: {e}");
                 }
             }
-            Command::SendTo(device_id, file_path) => {
-                let Some(addr) = self.discovery_server.find_device_addr_by_id(device_id) else {
-                    println!("No devices found that matches the given identifier");
+            Command::SendTo(peer_id, file_path) => {
+                let Some(addr) = self.discovery_server.find_peer_addr_by_id(peer_id) else {
+                    println!("No peers found that matches the given identifier");
                     return;
                 };
                 if let Err(e) = sender::send_file_to(addr, file_path) {

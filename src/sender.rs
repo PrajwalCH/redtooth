@@ -5,13 +5,13 @@ use std::net::TcpStream;
 use std::path::Path;
 
 use crate::logln;
-use crate::protocol::{DeviceAddress, FilePacket, FilePacketHeader};
+use crate::protocol::{FilePacket, FilePacketHeader, PeerAddr};
 
-pub fn send_file_to<P: AsRef<Path>>(addr: DeviceAddress, path: P) -> io::Result<()> {
+pub fn send_file_to<P: AsRef<Path>>(addr: PeerAddr, path: P) -> io::Result<()> {
     send_file_to_all(&[addr], path)
 }
 
-pub fn send_file_to_all<P: AsRef<Path>>(addrs: &[DeviceAddress], path: P) -> io::Result<()> {
+pub fn send_file_to_all<P: AsRef<Path>>(addrs: &[PeerAddr], path: P) -> io::Result<()> {
     let path = path.as_ref();
     assert!(path.is_file());
 

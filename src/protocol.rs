@@ -12,18 +12,18 @@ const TCP_PORT: u16 = 25802;
 /// of a file packet.
 const PACKET_SECTIONS_SEPARATOR: &[u8; 2] = b"::";
 
-pub type DeviceID = u64;
-pub type DeviceAddress = SocketAddr;
+pub type PeerID = u64;
+pub type PeerAddr = SocketAddr;
 
-pub fn device_id() -> DeviceID {
+pub fn get_my_id() -> PeerID {
     let mut hasher = DefaultHasher::new();
     Instant::now().hash(&mut hasher);
     hasher.finish()
 }
 
-pub fn device_address() -> DeviceAddress {
+pub fn get_my_addr() -> PeerAddr {
     let ip_addr = IpAddr::V4(interface::local_ipv4_address().unwrap_or(Ipv4Addr::UNSPECIFIED));
-    DeviceAddress::new(ip_addr, TCP_PORT)
+    PeerAddr::new(ip_addr, TCP_PORT)
 }
 
 /// Represents possible errors that can occur when converting a slice of bytes into a [`FilePacket`].

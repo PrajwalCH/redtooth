@@ -5,8 +5,8 @@ use std::net::{Ipv4Addr, UdpSocket};
 use std::sync::{Arc, Mutex, TryLockError};
 use std::thread::Builder as ThreadBuilder;
 
-use super::{DeviceMap, ThreadHandle};
-use crate::protocol::{DeviceAddress, DeviceID};
+use super::{PeerMap, ThreadHandle};
+use crate::protocol::{PeerAddr, PeerID};
 use crate::{elogln, logln};
 
 // Range between `224.0.0.0` to `224.0.0.250` is reserved or use by routing and maintenance
@@ -15,13 +15,13 @@ const MULTICAST_ADDRESS: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 251);
 const MULTICAST_PORT: u16 = 20581;
 
 /// Spawns a local server.
-pub fn spawn(device_map: Arc<Mutex<DeviceMap>>) -> io::Result<ThreadHandle> {
+pub fn spawn(peer_map: Arc<Mutex<PeerMap>>) -> io::Result<ThreadHandle> {
     let builder = ThreadBuilder::new().name(String::from("local discovery"));
-    builder.spawn(move || discover_devices(device_map))
+    builder.spawn(move || discover_peers(peer_map))
 }
 
-/// Announces the device to other instances of the local server.
-pub fn announce_device(id: DeviceID, address: DeviceAddress) -> io::Result<()> {
+/// Announces the peer to other instances of the local server.
+pub fn announce_peer(id: PeerID, address: PeerAddr) -> io::Result<()> {
     let socket = UdpSocket::bind("0.0.0.0:0")?;
     // Don't announce to the current instance of the server.
     socket.set_multicast_loop_v4(false)?;
@@ -32,7 +32,7 @@ pub fn announce_device(id: DeviceID, address: DeviceAddress) -> io::Result<()> {
 }
 
 /// Starts listening for an **announcement** a packet on the local network.
-fn discover_devices(device_map: Arc<Mutex<DeviceMap>>) -> io::Result<()> {
+fn discover_peers(peer_map: Arc<Mutex<PeerMap>>) -> io::Result<()> {
     let socket = UdpSocket::bind(("0.0.0.0", MULTICAST_PORT))?;
     // socket.set_read_timeout(Some(Duration::from_millis(20)))?;
     socket.join_multicast_v4(&MULTICAST_ADDRESS, &Ipv4Addr::UNSPECIFIED)?;
@@ -49,22 +49,22 @@ fn discover_devices(device_map: Arc<Mutex<DeviceMap>>) -> io::Result<()> {
         };
 
         // If the address present in a packet is unspecified (0.0.0.0), use the address from
-        // which the device announces itself.
+        // which the peer announces itself.
         if address.ip().is_unspecified() {
             address.set_ip(announcement_address.ip());
         }
 
         // Unlock the map's lock ASAP using inner block.
         {
-            let mut device_map = match device_map.try_lock() {
+            let mut peer_map = match peer_map.try_lock() {
                 Ok(guard) => guard,
                 Err(TryLockError::Poisoned(p)) => p.into_inner(),
                 Err(TryLockError::WouldBlock) => {
-                    elogln!("Device map's lock is currently acquired by some other component");
+                    elogln!("Peer map's lock is currently acquired by some other component");
                     continue;
                 }
             };
-            device_map.insert(id, address);
+            peer_map.insert(id, address);
         }
         logln!("Discovered `{address}`");
     }
@@ -75,11 +75,11 @@ fn discover_devices(device_map: Arc<Mutex<DeviceMap>>) -> io::Result<()> {
 /// ## Panics
 ///
 /// If the packet is not valid, UTF-8.
-fn parse_packet(packet: &[u8]) -> Option<(DeviceID, DeviceAddress)> {
+fn parse_packet(packet: &[u8]) -> Option<(PeerID, PeerAddr)> {
     let packet = String::from_utf8(packet.to_vec()).unwrap();
     let mut content_iter = packet.split(';');
 
-    let id = content_iter.next()?.parse::<DeviceID>().ok()?;
-    let address = content_iter.next()?.parse::<DeviceAddress>().ok()?;
+    let id = content_iter.next()?.parse::<PeerID>().ok()?;
+    let address = content_iter.next()?.parse::<PeerAddr>().ok()?;
     Some((id, address))
 }

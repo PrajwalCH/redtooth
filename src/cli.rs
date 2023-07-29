@@ -1,19 +1,19 @@
 use std::io;
 use std::io::BufRead;
 
-use crate::protocol::DeviceID;
+use crate::protocol::PeerID;
 
 pub enum Command<'buf> {
     /// Unknown or unrecognized command
     Unknown,
     /// Display the IP address of the current device.
     MyIp,
-    /// Display the identifiers of all the discovered devices.
+    /// Display the identifiers of all the discovered peers.
     List,
-    /// Send a file to all the devices.
+    /// Send a file to all the peers.
     Send(&'buf str),
-    /// Send a file to the device that matches the given identifier.
-    SendTo(DeviceID, &'buf str),
+    /// Send a file to the peer that matches the given identifier.
+    SendTo(PeerID, &'buf str),
 }
 
 pub fn read_command(input_buffer: &mut String) -> io::Result<Command> {
@@ -27,9 +27,9 @@ pub fn read_command(input_buffer: &mut String) -> io::Result<Command> {
         "list" => Command::List,
         "send" => Command::Send(it.next().unwrap().trim()),
         "sendto" => {
-            let device_id = it.next().unwrap().trim().parse::<DeviceID>().unwrap();
+            let peer_id = it.next().unwrap().trim().parse::<PeerID>().unwrap();
             let file_path = it.next().unwrap().trim();
-            Command::SendTo(device_id, file_path)
+            Command::SendTo(peer_id, file_path)
         }
         _ => Command::Unknown,
     };

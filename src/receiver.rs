@@ -3,12 +3,12 @@ use std::io::{self, Read};
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 
-use crate::protocol::{DeviceAddress, FilePacket};
+use crate::protocol::{FilePacket, PeerAddr};
 use crate::{elogln, logln};
 
 /// Starts receiving files on the `addr` and upon successful reception saves them
 /// to the given location.
-pub fn receive_files(addr: DeviceAddress, save_location: PathBuf) -> io::Result<()> {
+pub fn receive_files(addr: PeerAddr, save_location: PathBuf) -> io::Result<()> {
     let listener = TcpListener::bind(addr)?;
     logln!("Receiving data on {addr}");
 
