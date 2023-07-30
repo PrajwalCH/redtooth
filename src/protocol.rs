@@ -130,6 +130,7 @@ pub struct FilePacketHeader<'data> {
 }
 
 impl<'data> FilePacketHeader<'data> {
+    /// Converts a slice of bytes into a file packet header.
     pub fn from_bytes(b: &'data [u8]) -> Result<FilePacketHeader, FilePacketHeaderParseError> {
         let header = str::from_utf8(b).map_err(FilePacketHeaderParseError::InvalidUtf8)?;
         let file_name = header
@@ -140,6 +141,7 @@ impl<'data> FilePacketHeader<'data> {
         Ok(Self { file_name })
     }
 
+    /// Converts a file packet header into vector of bytes.
     pub fn as_owned_bytes(&self) -> Vec<u8> {
         let mut data = String::new();
         writeln!(data, "file_name: {}", self.file_name).ok();
