@@ -2,6 +2,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::fmt::{self, Write};
 use std::hash::{Hash, Hasher};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::str::{self, Utf8Error};
 use std::time::Instant;
 
 use crate::interface;
@@ -103,6 +104,7 @@ impl<'data> FilePacket<'data> {
 /// This error is returned from the [`FilePacketHeader::from_str`].
 pub enum FilePacketHeaderParseError {
     MissingFileName,
+    InvalidUtf8(Utf8Error),
 }
 
 impl fmt::Display for FilePacketHeaderParseError {
@@ -111,6 +113,7 @@ impl fmt::Display for FilePacketHeaderParseError {
 
         match self {
             MissingFileName => write!(f, "missing required field `file_name`"),
+            InvalidUtf8(e) => write!(f, "{e}"),
         }
     }
 }
@@ -128,7 +131,7 @@ pub struct FilePacketHeader {
 
 impl FilePacketHeader {
     pub fn from_bytes(b: &[u8]) -> Result<FilePacketHeader, FilePacketHeaderParseError> {
-        let header = std::str::from_utf8(b).unwrap_or_default();
+        let header = str::from_utf8(b).map_err(FilePacketHeaderParseError::InvalidUtf8)?;
         let file_name = header
             .trim()
             .strip_prefix("file_name: ")
