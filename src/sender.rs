@@ -19,9 +19,7 @@ pub fn send_file_to_all<P: AsRef<Path>>(addrs: &[PeerAddr], path: P) -> io::Resu
         .file_name()
         .unwrap_or(path.as_os_str())
         .to_string_lossy();
-    let header = FilePacketHeader {
-        file_name: &file_name,
-    };
+    let header = FilePacketHeader::new(&file_name);
     let file_contents = fs::read(path)?;
     let data = FilePacket::new(header, &file_contents).as_owned_bytes();
     logln!("Sending data of {} bytes", data.len());

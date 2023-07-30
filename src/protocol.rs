@@ -130,6 +130,11 @@ pub struct FilePacketHeader<'data> {
 }
 
 impl<'data> FilePacketHeader<'data> {
+    /// Creates a new file packet header with the given file name.
+    pub fn new(file_name: &'data str) -> FilePacketHeader {
+        Self { file_name }
+    }
+
     /// Converts a slice of bytes into a file packet header.
     pub fn from_bytes(b: &'data [u8]) -> Result<FilePacketHeader, FilePacketHeaderParseError> {
         let header = str::from_utf8(b).map_err(FilePacketHeaderParseError::InvalidUtf8)?;
