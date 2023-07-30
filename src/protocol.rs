@@ -60,14 +60,14 @@ impl fmt::Display for FilePacketFromBytesError {
 #[derive(Debug)]
 pub struct FilePacket<'data> {
     /// The header information of the file packet.
-    pub header: FilePacketHeader,
+    pub header: FilePacketHeader<'data>,
     /// The contents of the file.
     pub contents: &'data [u8],
 }
 
 impl<'data> FilePacket<'data> {
     /// Creates a new file packet with the given header and contents.
-    pub fn new(header: FilePacketHeader, contents: &'data [u8]) -> FilePacket {
+    pub fn new(header: FilePacketHeader<'data>, contents: &'data [u8]) -> FilePacket<'data> {
         Self { header, contents }
     }
 
@@ -124,19 +124,18 @@ impl fmt::Display for FilePacketHeaderParseError {
 /// This header is pre-pended to the actual file data before transmission,
 /// allowing the receiver to correctly handle the incoming data.
 #[derive(Debug)]
-pub struct FilePacketHeader {
+pub struct FilePacketHeader<'data> {
     /// The name of the file, including its extension.
-    pub file_name: String,
+    pub file_name: &'data str,
 }
 
-impl FilePacketHeader {
-    pub fn from_bytes(b: &[u8]) -> Result<FilePacketHeader, FilePacketHeaderParseError> {
+impl<'data> FilePacketHeader<'data> {
+    pub fn from_bytes(b: &'data [u8]) -> Result<FilePacketHeader, FilePacketHeaderParseError> {
         let header = str::from_utf8(b).map_err(FilePacketHeaderParseError::InvalidUtf8)?;
         let file_name = header
             .trim()
             .strip_prefix("file_name: ")
-            .ok_or(FilePacketHeaderParseError::MissingFileName)?
-            .to_string();
+            .ok_or(FilePacketHeaderParseError::MissingFileName)?;
 
         Ok(Self { file_name })
     }
