@@ -1,8 +1,7 @@
 use std::collections::hash_map::DefaultHasher;
-use std::fmt;
+use std::fmt::{self, Write};
 use std::hash::{Hash, Hasher};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::str::FromStr;
 use std::time::Instant;
 
 use crate::interface;
@@ -79,8 +78,7 @@ impl<'data> FilePacket<'data> {
             .position(|bytes| bytes == PACKET_SECTIONS_SEPARATOR)
             .ok_or(FilePacketFromBytesError::MissingSectionsSeparator)?;
 
-        let header = std::str::from_utf8(&bytes[..separator_index]).unwrap_or_default();
-        let header = FilePacketHeader::from_str(header)
+        let header = FilePacketHeader::from_bytes(&bytes[..separator_index])
             .map_err(FilePacketFromBytesError::HeaderParseError)?;
         // Skip all the separator bytes.
         let contents = bytes.get(separator_index + separator_len..);
@@ -93,8 +91,7 @@ impl<'data> FilePacket<'data> {
     /// Converts a file packet into vector of bytes.
     pub fn as_owned_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
-        let header = self.header.to_string();
-        bytes.extend_from_slice(header.as_bytes());
+        bytes.extend_from_slice(&self.header.as_owned_bytes());
         bytes.extend_from_slice(PACKET_SECTIONS_SEPARATOR);
         bytes.extend_from_slice(self.contents);
         bytes
@@ -129,22 +126,21 @@ pub struct FilePacketHeader {
     pub file_name: String,
 }
 
-impl FromStr for FilePacketHeader {
-    type Err = FilePacketHeaderParseError;
-
-    fn from_str(s: &str) -> Result<FilePacketHeader, FilePacketHeaderParseError> {
-        let name = s
+impl FilePacketHeader {
+    pub fn from_bytes(b: &[u8]) -> Result<FilePacketHeader, FilePacketHeaderParseError> {
+        let header = std::str::from_utf8(b).unwrap_or_default();
+        let file_name = header
             .trim()
             .strip_prefix("file_name: ")
             .ok_or(FilePacketHeaderParseError::MissingFileName)?
             .to_string();
 
-        Ok(Self { file_name: name })
+        Ok(Self { file_name })
     }
-}
 
-impl fmt::Display for FilePacketHeader {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "file_name: {}", self.file_name)
+    pub fn as_owned_bytes(&self) -> Vec<u8> {
+        let mut data = String::new();
+        writeln!(data, "file_name: {}", self.file_name).ok();
+        data.as_bytes().to_vec()
     }
 }
