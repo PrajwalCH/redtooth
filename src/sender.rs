@@ -22,7 +22,7 @@ pub fn send_file_to_all<P: AsRef<Path>>(addrs: &[PeerAddr], path: P) -> io::Resu
         .to_string();
     let header = FilePacketHeader { file_name };
     let file_contents = fs::read(path)?;
-    let data = FilePacket::new(header, file_contents).as_owned_bytes();
+    let data = FilePacket::new(header, &file_contents).as_owned_bytes();
     logln!("Sending data of {} bytes", data.len());
 
     for addr in addrs {

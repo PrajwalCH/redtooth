@@ -58,21 +58,21 @@ impl fmt::Display for FilePacketFromBytesError {
 ///
 /// - **Contents:** The contents section holds the actual data of the file to be transmitted.
 #[derive(Debug)]
-pub struct FilePacket {
+pub struct FilePacket<'data> {
     /// The header information of the file packet.
     pub header: FilePacketHeader,
     /// The contents of the file.
-    pub contents: Vec<u8>,
+    pub contents: &'data [u8],
 }
 
-impl FilePacket {
+impl<'data> FilePacket<'data> {
     /// Creates a new file packet with the given header and contents.
-    pub fn new(header: FilePacketHeader, contents: Vec<u8>) -> FilePacket {
+    pub fn new(header: FilePacketHeader, contents: &'data [u8]) -> FilePacket {
         Self { header, contents }
     }
 
     /// Converts a slice of bytes into a file packet.
-    pub fn from_bytes(bytes: &[u8]) -> Result<FilePacket, FilePacketFromBytesError> {
+    pub fn from_bytes(bytes: &'data [u8]) -> Result<FilePacket, FilePacketFromBytesError> {
         let separator_len = PACKET_SECTIONS_SEPARATOR.len();
         let separator_index = bytes
             .windows(separator_len)
@@ -86,7 +86,7 @@ impl FilePacket {
         let contents = bytes.get(separator_index + separator_len..);
         // If a valid header and separator are present but the contents are missing,
         // declare it as an empty.
-        let contents = contents.unwrap_or_default().to_owned();
+        let contents = contents.unwrap_or_default();
         Ok(Self { header, contents })
     }
 
@@ -96,7 +96,7 @@ impl FilePacket {
         let header = self.header.to_string();
         bytes.extend_from_slice(header.as_bytes());
         bytes.extend_from_slice(PACKET_SECTIONS_SEPARATOR);
-        bytes.extend_from_slice(&self.contents);
+        bytes.extend_from_slice(self.contents);
         bytes
     }
 }
