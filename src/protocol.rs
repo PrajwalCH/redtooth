@@ -1,4 +1,5 @@
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashMap;
 use std::fmt::{self, Write};
 use std::hash::{Hash, Hasher};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -8,8 +9,8 @@ use std::time::Instant;
 use crate::interface;
 
 const TCP_PORT: u16 = 25802;
-/// Represents a separator used to distinguish sections, such as header and file contents
-/// of a file packet.
+/// Represents a separator used to distinguish sections, such as headers and payload
+/// of the packet.
 const PACKET_SECTIONS_SEPARATOR: &[u8; 2] = b"::";
 
 pub type PeerID = u64;
@@ -26,130 +27,142 @@ pub fn get_my_addr() -> PeerAddr {
     PeerAddr::new(ip_addr, TCP_PORT)
 }
 
-/// Represents possible errors that can occur when converting a slice of bytes into a [`FilePacket`].
+/// Represents possible errors that can occur when reconstructing a new [`Packet`]
+/// from the bytes.
 ///
-/// This error is returned from the [`FilePacket::from_bytes`].
-pub enum FilePacketFromBytesError {
-    MissingSectionsSeparator,
-    HeaderParseError(FilePacketHeaderParseError),
-}
-
-impl fmt::Display for FilePacketFromBytesError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use self::FilePacketFromBytesError::*;
-
-        match self {
-            MissingSectionsSeparator => {
-                write!(f, "missing sections separator")
-            }
-            HeaderParseError(e) => {
-                write!(f, "couldn't parse the header: {e}")
-            }
-        }
-    }
-}
-
-/// Represents a packet used for transferring files along with their associated metadata.
-///
-/// The file packet is divided into two sections separated by [`PACKET_SECTIONS_SEPARATOR`]:
-///
-/// - **[`FilePacketHeader`]:** The header holds the metadata or information associated with the file.
-///   This includes relevant details such as file name, size, checksum, etc.
-///
-/// - **Contents:** The contents section holds the actual data of the file to be transmitted.
+/// This error is returned from the [`Packet::from_bytes`].
 #[derive(Debug)]
-pub struct FilePacket<'data> {
-    /// The header information of the file packet.
-    pub header: FilePacketHeader<'data>,
-    /// The contents of the file.
-    pub contents: &'data [u8],
-}
-
-impl<'data> FilePacket<'data> {
-    /// Creates a new file packet with the given header and contents.
-    pub fn new(header: FilePacketHeader<'data>, contents: &'data [u8]) -> FilePacket<'data> {
-        Self { header, contents }
-    }
-
-    /// Converts a slice of bytes into a file packet.
-    pub fn from_bytes(bytes: &'data [u8]) -> Result<FilePacket, FilePacketFromBytesError> {
-        let separator_len = PACKET_SECTIONS_SEPARATOR.len();
-        let separator_index = bytes
-            .windows(separator_len)
-            .position(|bytes| bytes == PACKET_SECTIONS_SEPARATOR)
-            .ok_or(FilePacketFromBytesError::MissingSectionsSeparator)?;
-
-        let header = FilePacketHeader::from_bytes(&bytes[..separator_index])
-            .map_err(FilePacketFromBytesError::HeaderParseError)?;
-        // Skip all the separator bytes.
-        let contents = bytes.get(separator_index + separator_len..);
-        // If a valid header and separator are present but the contents are missing,
-        // declare it as an empty.
-        let contents = contents.unwrap_or_default();
-        Ok(Self { header, contents })
-    }
-
-    /// Converts a file packet into vector of bytes.
-    pub fn as_owned_bytes(&self) -> Vec<u8> {
-        let mut bytes = Vec::new();
-        bytes.extend_from_slice(&self.header.as_owned_bytes());
-        bytes.extend_from_slice(PACKET_SECTIONS_SEPARATOR);
-        bytes.extend_from_slice(self.contents);
-        bytes
-    }
-}
-
-/// Represents possible errors that can occur when parsing a string to a [`FilePacketHeader`].
-///
-/// This error is returned from the [`FilePacketHeader::from_str`].
-pub enum FilePacketHeaderParseError {
-    MissingFileName,
+pub enum PacketParseError {
+    MissingSectionsSeparator,
     InvalidUtf8(Utf8Error),
 }
 
-impl fmt::Display for FilePacketHeaderParseError {
+impl fmt::Display for PacketParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use self::FilePacketHeaderParseError::*;
+        use self::PacketParseError::*;
 
         match self {
-            MissingFileName => write!(f, "missing required field `file_name`"),
+            MissingSectionsSeparator => write!(f, "missing sections separator"),
             InvalidUtf8(e) => write!(f, "{e}"),
         }
     }
 }
 
-/// Represents the header information for a file packet being transmitted.
+/// Represents a packet used for transferring any data along with the additional information.
 ///
-/// It encapsulates essential metadata about the file being sent.
-/// This header is pre-pended to the actual file data before transmission,
-/// allowing the receiver to correctly handle the incoming data.
-#[derive(Debug)]
-pub struct FilePacketHeader<'data> {
-    /// The name of the file, including its extension.
-    pub file_name: &'data str,
+/// The packet is divided into two sections separated by [`PACKET_SECTIONS_SEPARATOR`]:
+///
+/// - **Headers** allow the sender and receiver to either pass additional information for the
+/// communication or to pass more information about the data to be transmitted.
+///
+/// - **Payload** holds the actual data to be transmitted.
+struct Packet<'data> {
+    headers: HashMap<&'data str, &'data str>,
+    payload: Option<&'data [u8]>,
 }
 
-impl<'data> FilePacketHeader<'data> {
-    /// Creates a new file packet header with the given file name.
-    pub fn new(file_name: &'data str) -> FilePacketHeader {
-        Self { file_name }
+impl<'data> Packet<'data> {
+    /// Creates a new empty packet.
+    pub fn new() -> Packet<'data> {
+        Packet {
+            headers: HashMap::new(),
+            payload: None,
+        }
     }
 
-    /// Converts a slice of bytes into a file packet header.
-    pub fn from_bytes(b: &'data [u8]) -> Result<FilePacketHeader, FilePacketHeaderParseError> {
-        let header = str::from_utf8(b).map_err(FilePacketHeaderParseError::InvalidUtf8)?;
-        let file_name = header
-            .trim()
-            .strip_prefix("file_name: ")
-            .ok_or(FilePacketHeaderParseError::MissingFileName)?;
+    /// Creates a new packet by preserving its state from the given bytes.
+    ///
+    /// This function attempts to reconstruct a new [`Packet`] from the provided bytes
+    /// with the same state as it was originally created using [`Packet::as_bytes`].
+    pub fn from_bytes(bytes: &[u8]) -> Result<Packet, PacketParseError> {
+        let separator_len = PACKET_SECTIONS_SEPARATOR.len();
+        let separator_index = bytes
+            .windows(separator_len)
+            .position(|bytes| bytes == PACKET_SECTIONS_SEPARATOR)
+            .ok_or(PacketParseError::MissingSectionsSeparator)?;
+        let headers = str::from_utf8(&bytes[..separator_index])
+            .map_err(PacketParseError::InvalidUtf8)?
+            .lines()
+            .map(|header| header.split(": "))
+            .filter_map(|mut it| Some((it.next()?, it.next()?)))
+            .collect::<HashMap<&str, &str>>();
+        let payload = bytes.get(separator_index + separator_len..);
 
-        Ok(Self { file_name })
+        Ok(Packet { headers, payload })
     }
 
-    /// Converts a file packet header into vector of bytes.
+    /// Inserts a header into the packet or updates its value if the header already exists.
+    pub fn set_header(&mut self, name: &'data str, value: &'data str) {
+        self.headers.insert(name, value);
+    }
+
+    /// Sets the payload to be transmitted.
+    pub fn set_payload(&mut self, payload: &'data [u8]) {
+        self.payload = Some(payload);
+    }
+
+    /// Returns a reference to the value corresponding to the header.
+    pub fn get_header(&self, name: &str) -> Option<&str> {
+        self.headers.get(name).copied()
+    }
+
+    /// Returns the payload of the packet, if available.
+    pub fn get_payload(&self) -> Option<&[u8]> {
+        self.payload
+    }
+
+    /// Converts the packet into a bytes which can be sent over the network.
+    ///
+    /// These bytes on the receiver side can then be used to reconstruct a new [`Packet`]
+    /// using [`Packet::from_bytes`] with the same state as at the time of sending.
+    pub fn as_bytes(&self) -> Vec<u8> {
+        let mut headers = String::new();
+
+        for (name, value) in self.headers.iter() {
+            writeln!(headers, "{name}: {value}").unwrap();
+        }
+        let mut final_bytes = Vec::new();
+        final_bytes.extend_from_slice(headers.as_bytes());
+        final_bytes.extend_from_slice(PACKET_SECTIONS_SEPARATOR);
+
+        if let Some(payload) = &self.payload {
+            final_bytes.extend_from_slice(payload);
+        }
+        final_bytes
+    }
+}
+
+/// A wrapper around [`Packet`] specialized for transferring files along
+/// with their associated metadata.
+pub struct FilePacket<'data>(Packet<'data>);
+
+impl<'data> FilePacket<'data> {
+    /// Creates a new empty file packet.
+    pub fn new() -> FilePacket<'data> {
+        FilePacket(Packet::new())
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Result<FilePacket, PacketParseError> {
+        Ok(FilePacket(Packet::from_bytes(bytes)?))
+    }
+
+    pub fn set_metadata(&mut self, name: &'data str, value: &'data str) {
+        self.0.set_header(name, value);
+    }
+
+    pub fn set_contents(&mut self, contents: &'data [u8]) {
+        self.0.set_payload(contents);
+    }
+
+    pub fn get_metadata(&self, name: &str) -> &str {
+        self.0.get_header(name).unwrap_or("undefined")
+    }
+
+    pub fn get_contents(&self) -> &[u8] {
+        self.0.get_payload().unwrap_or_default()
+    }
+
     pub fn as_owned_bytes(&self) -> Vec<u8> {
-        let mut data = String::new();
-        writeln!(data, "file_name: {}", self.file_name).ok();
-        data.as_bytes().to_vec()
+        self.0.as_bytes()
     }
 }

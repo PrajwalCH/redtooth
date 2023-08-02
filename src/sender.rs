@@ -5,7 +5,7 @@ use std::net::TcpStream;
 use std::path::Path;
 
 use crate::logln;
-use crate::protocol::{FilePacket, FilePacketHeader, PeerAddr};
+use crate::protocol::{FilePacket, PeerAddr};
 
 pub fn send_file_to<P: AsRef<Path>>(addr: PeerAddr, path: P) -> io::Result<()> {
     send_file_to_all(&[addr], path)
@@ -19,9 +19,12 @@ pub fn send_file_to_all<P: AsRef<Path>>(addrs: &[PeerAddr], path: P) -> io::Resu
         .file_name()
         .unwrap_or(path.as_os_str())
         .to_string_lossy();
-    let header = FilePacketHeader::new(&file_name);
     let file_contents = fs::read(path)?;
-    let data = FilePacket::new(header, &file_contents).as_owned_bytes();
+    let mut packet = FilePacket::new();
+    packet.set_metadata("file_name", &file_name);
+    packet.set_contents(&file_contents);
+
+    let data = packet.as_owned_bytes();
     logln!("Sending data of {} bytes", data.len());
 
     for addr in addrs {
