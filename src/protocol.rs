@@ -56,7 +56,7 @@ impl fmt::Display for PacketParseError {
 /// communication or to pass more information about the data to be transmitted.
 ///
 /// - **Payload** holds the actual data to be transmitted.
-struct Packet<'data> {
+pub struct Packet<'data> {
     headers: HashMap<&'data str, &'data str>,
     payload: Option<&'data [u8]>,
 }
