@@ -7,11 +7,11 @@ use std::path::Path;
 use crate::logln;
 use crate::protocol::{FilePacket, PeerAddr};
 
-pub fn send_file_to<P: AsRef<Path>>(addr: PeerAddr, path: P) -> io::Result<()> {
+pub fn send_file_to(addr: PeerAddr, path: impl AsRef<Path>) -> io::Result<()> {
     send_file_to_all(&[addr], path)
 }
 
-pub fn send_file_to_all<P: AsRef<Path>>(addrs: &[PeerAddr], path: P) -> io::Result<()> {
+pub fn send_file_to_all(addrs: &[PeerAddr], path: impl AsRef<Path>) -> io::Result<()> {
     let path = path.as_ref();
     assert!(path.is_file());
 
