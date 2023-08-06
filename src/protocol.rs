@@ -4,8 +4,10 @@ use std::collections::HashMap;
 use std::fmt::{self, Write};
 use std::hash::{Hash, Hasher};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::path::Path;
 use std::str::{self, Utf8Error};
 use std::time::Instant;
+use std::{fs, io};
 
 use crate::interface;
 
@@ -140,30 +142,30 @@ impl<'p> Packet<'p> {
     }
 }
 
-/// A wrapper around [`Packet`] specialized for transferring files along
-/// with their associated metadata.
+/// A wrapper around [`Packet`] specialized for constructing a packet to send or receive files
+/// along with their associated metadata.
+///
+/// TODO: This module is not a good place to put this.
 pub struct FilePacket<'data>(Packet<'data>);
 
 impl<'data> FilePacket<'data> {
     /// Creates a new empty file packet.
-    pub fn new() -> FilePacket<'data> {
-        FilePacket(Packet::new())
+    pub fn from_path(path: &Path) -> io::Result<FilePacket<'data>> {
+        let file_name = path.file_name().unwrap_or(path.as_os_str());
+        let file_contents = fs::read(path)?;
+
+        let mut packet = Packet::new();
+        packet.set_header("file_name", file_name.to_string_lossy());
+        packet.set_payload(file_contents);
+        Ok(FilePacket(packet))
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Result<FilePacket, PacketParseError> {
         Ok(FilePacket(Packet::from_bytes(bytes)?))
     }
 
-    pub fn set_metadata(&mut self, name: &'data str, value: &'data str) {
-        self.0.set_header(name, value);
-    }
-
-    pub fn set_contents(&mut self, contents: &'data [u8]) {
-        self.0.set_payload(contents);
-    }
-
-    pub fn get_metadata(&self, name: &str) -> &str {
-        self.0.get_header(name).unwrap_or("undefined")
+    pub fn get_file_name(&self) -> &str {
+        self.0.get_header("file_name").unwrap_or("undefined")
     }
 
     pub fn get_contents(&self) -> &[u8] {

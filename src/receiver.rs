@@ -41,6 +41,6 @@ pub fn receive_files(addr: PeerAddr, save_location: PathBuf) -> io::Result<()> {
 /// This function will create a file if it does not exist,
 /// and will entirely replace its contents with a new one if it does.
 fn write_file(packet: FilePacket, save_location: &Path) -> io::Result<()> {
-    let file_path = save_location.join(packet.get_metadata("file_name"));
+    let file_path = save_location.join(packet.get_file_name());
     fs::write(file_path, packet.get_contents())
 }

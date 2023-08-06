@@ -1,6 +1,4 @@
-use std::fs;
-use std::io;
-use std::io::Write;
+use std::io::{self, Write};
 use std::net::TcpStream;
 use std::path::Path;
 
@@ -15,15 +13,7 @@ pub fn send_file_to_all(addrs: &[PeerAddr], path: impl AsRef<Path>) -> io::Resul
     let path = path.as_ref();
     assert!(path.is_file());
 
-    let file_name = path
-        .file_name()
-        .unwrap_or(path.as_os_str())
-        .to_string_lossy();
-    let file_contents = fs::read(path)?;
-    let mut packet = FilePacket::new();
-    packet.set_metadata("file_name", &file_name);
-    packet.set_contents(&file_contents);
-
+    let packet = FilePacket::from_path(path)?;
     let data = packet.as_owned_bytes();
     logln!("Sending data of {} bytes", data.len());
 
