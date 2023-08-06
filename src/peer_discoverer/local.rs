@@ -5,8 +5,7 @@ use std::net::{Ipv4Addr, UdpSocket};
 use std::sync::{Arc, Mutex, TryLockError};
 use std::thread::Builder as ThreadBuilder;
 
-use super::{PeerMap, ThreadHandle};
-use crate::protocol::{PeerAddr, PeerID};
+use super::{AnnouncementPkt, PeerMap, ThreadHandle};
 use crate::{elogln, logln};
 
 // Range between `224.0.0.0` to `224.0.0.250` is reserved or use by routing and maintenance
@@ -21,13 +20,11 @@ pub fn spawn(peer_map: Arc<Mutex<PeerMap>>) -> io::Result<ThreadHandle> {
 }
 
 /// Announces the peer to other instances of the local server.
-pub fn announce_peer(id: PeerID, addr: PeerAddr) -> io::Result<()> {
+pub fn announce_peer(pkt: &[u8]) -> io::Result<()> {
     let socket = UdpSocket::bind("0.0.0.0:0")?;
     // Don't announce to the current instance of the server.
     socket.set_multicast_loop_v4(false)?;
-
-    let packet = format!("{id};{addr}");
-    socket.send_to(packet.as_bytes(), (MULTICAST_ADDR, MULTICAST_PORT))?;
+    socket.send_to(pkt, (MULTICAST_ADDR, MULTICAST_PORT))?;
     Ok(())
 }
 
@@ -38,13 +35,18 @@ fn discover_peers(peer_map: Arc<Mutex<PeerMap>>) -> io::Result<()> {
     logln!("Listening for new announcement on {}", socket.local_addr()?);
 
     loop {
-        let mut packet = [0; 4096];
-        let Ok((packet_len, announcement_addr)) = socket.recv_from(&mut packet) else {
+        let mut raw_pkt = [0; 4096];
+        let Ok((pkt_len, announcement_addr)) = socket.recv_from(&mut raw_pkt) else {
             continue;
         };
-        let Some((id, mut addr)) = parse_packet(&packet[..packet_len]) else {
+
+        let Some(pkt) = AnnouncementPkt::from_bytes(&raw_pkt[..pkt_len]).ok() else {
             elogln!("Received a badly formatted packet from {announcement_addr}");
             continue;
+        };
+        let (Some(id), Some(mut addr)) = (pkt.get_peer_id(), pkt.get_peer_addr()) else {
+            elogln!("Peer id and address are missing from the packet");
+            continue
         };
 
         // If the address present in a packet is unspecified (0.0.0.0), use the address from
@@ -67,18 +69,4 @@ fn discover_peers(peer_map: Arc<Mutex<PeerMap>>) -> io::Result<()> {
         }
         logln!("Discovered `{addr}`");
     }
-}
-
-/// Parses the packet and returns the id and address.
-///
-/// ## Panics
-///
-/// If the packet is not valid, UTF-8.
-fn parse_packet(packet: &[u8]) -> Option<(PeerID, PeerAddr)> {
-    let packet = String::from_utf8(packet.to_vec()).unwrap();
-    let mut content_iter = packet.split(';');
-
-    let id = content_iter.next()?.parse::<PeerID>().ok()?;
-    let addr = content_iter.next()?.parse::<PeerAddr>().ok()?;
-    Some((id, addr))
 }

@@ -9,6 +9,7 @@ use crate::peer_discoverer::PeerDiscoverer;
 use crate::protocol::{self, PeerAddr, PeerID};
 use crate::{elogln, receiver, sender};
 
+#[allow(dead_code)]
 pub struct App {
     my_id: PeerID,
     my_addr: PeerAddr,
@@ -24,11 +25,13 @@ impl App {
         let home_path = env::var(home_env_key).expect(
             "env variable `HOME` for linux and `USERPROFILE` for windows should be available",
         );
+        let my_id = protocol::get_my_id();
+        let my_addr = protocol::get_my_addr();
 
         App {
-            my_id: protocol::get_my_id(),
-            my_addr: protocol::get_my_addr(),
-            peer_discoverer: PeerDiscoverer::new(),
+            my_id,
+            my_addr,
+            peer_discoverer: PeerDiscoverer::new(my_id, my_addr),
             save_location: PathBuf::from(home_path),
         }
     }
@@ -39,8 +42,7 @@ impl App {
     pub fn run(&mut self) -> io::Result<()> {
         self.spawn_file_receiver()?;
         self.peer_discoverer.start()?;
-        self.peer_discoverer
-            .announce_peer(self.my_id, self.my_addr)?;
+        self.peer_discoverer.announce_peer()?;
 
         // Wait for a short duration to allow other threads to fully start up.
         thread::sleep(Duration::from_millis(20));
