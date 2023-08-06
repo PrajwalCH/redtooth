@@ -116,10 +116,7 @@ impl<'p> Packet<'p> {
 
     /// Returns the payload of the packet, if available.
     pub fn get_payload(&self) -> Option<&[u8]> {
-        self.payload.map(|p| match p {
-            Cow::Borrowed(p) => p,
-            Cow::Owned(p) => &p,
-        })
+        self.payload.as_deref()
     }
 
     /// Converts the packet into a bytes which can be sent over the network.
