@@ -133,7 +133,7 @@ impl<'p> Packet<'p> {
         final_bytes.extend_from_slice(headers.as_bytes());
         final_bytes.extend_from_slice(PACKET_SECTIONS_SEPARATOR);
 
-        if let Some(payload) = &self.payload {
+        if let Some(payload) = self.get_payload() {
             final_bytes.extend_from_slice(payload);
         }
         final_bytes
