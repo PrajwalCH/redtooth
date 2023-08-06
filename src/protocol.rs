@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::fmt::{self, Write};
@@ -56,14 +57,14 @@ impl fmt::Display for PacketParseError {
 /// communication or to pass more information about the data to be transmitted.
 ///
 /// - **Payload** holds the actual data to be transmitted.
-pub struct Packet<'data> {
-    headers: HashMap<&'data str, &'data str>,
-    payload: Option<&'data [u8]>,
+pub struct Packet<'p> {
+    headers: HashMap<String, String>,
+    payload: Option<Cow<'p, [u8]>>,
 }
 
-impl<'data> Packet<'data> {
+impl<'p> Packet<'p> {
     /// Creates a new empty packet.
-    pub fn new() -> Packet<'data> {
+    pub fn new() -> Packet<'p> {
         Packet {
             headers: HashMap::new(),
             payload: None,
@@ -80,35 +81,45 @@ impl<'data> Packet<'data> {
             .windows(separator_len)
             .position(|bytes| bytes == PACKET_SECTIONS_SEPARATOR)
             .ok_or(PacketParseError::MissingSectionsSeparator)?;
+
         let headers = str::from_utf8(&bytes[..separator_index])
             .map_err(PacketParseError::InvalidUtf8)?
             .lines()
             .map(|header| header.split(": "))
-            .filter_map(|mut it| Some((it.next()?, it.next()?)))
-            .collect::<HashMap<&str, &str>>();
-        let payload = bytes.get(separator_index + separator_len..);
+            .filter_map(|mut it| Some((it.next()?.to_string(), it.next()?.to_string())))
+            .collect::<HashMap<String, String>>();
+        let payload = bytes
+            .get(separator_index + separator_len..)
+            .map(Cow::Borrowed);
 
         Ok(Packet { headers, payload })
     }
 
     /// Inserts a header into the packet or updates its value if the header already exists.
-    pub fn set_header(&mut self, name: &'data str, value: &'data str) {
-        self.headers.insert(name, value);
+    pub fn set_header<N, V>(&mut self, name: N, value: V)
+    where
+        N: ToString,
+        V: ToString,
+    {
+        self.headers.insert(name.to_string(), value.to_string());
     }
 
     /// Sets the payload to be transmitted.
-    pub fn set_payload(&mut self, payload: &'data [u8]) {
-        self.payload = Some(payload);
+    pub fn set_payload(&mut self, payload: Vec<u8>) {
+        self.payload = Some(Cow::Owned(payload));
     }
 
     /// Returns a reference to the value corresponding to the header.
     pub fn get_header(&self, name: &str) -> Option<&str> {
-        self.headers.get(name).copied()
+        self.headers.get(name).map(|v| v.as_str())
     }
 
     /// Returns the payload of the packet, if available.
     pub fn get_payload(&self) -> Option<&[u8]> {
-        self.payload
+        self.payload.map(|p| match p {
+            Cow::Borrowed(p) => p,
+            Cow::Owned(p) => &p,
+        })
     }
 
     /// Converts the packet into a bytes which can be sent over the network.
