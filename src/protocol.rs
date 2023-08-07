@@ -87,8 +87,8 @@ impl<'p> Packet<'p> {
         let headers = str::from_utf8(&bytes[..separator_index])
             .map_err(PacketParseError::InvalidUtf8)?
             .lines()
-            .map(|header| header.split(": "))
-            .filter_map(|mut it| Some((it.next()?.to_string(), it.next()?.to_string())))
+            .filter_map(|header| header.split_once(':'))
+            .map(|(name, value)| (name.to_string(), value.trim().to_string()))
             .collect::<HashMap<String, String>>();
         let payload = bytes
             .get(separator_index + separator_len..)
