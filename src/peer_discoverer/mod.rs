@@ -1,9 +1,9 @@
 mod local;
 
 use std::collections::HashMap;
-use std::io;
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
+use std::{fmt, io};
 
 use crate::protocol::PeerAddr;
 use crate::protocol::PeerID;
@@ -15,7 +15,7 @@ type ThreadHandle = JoinHandle<io::Result<()>>;
 #[allow(dead_code)]
 pub struct PeerDiscoverer {
     peers: Arc<Mutex<PeerMap>>,
-    announcement_pkt: AnnouncementPkt<'static>,
+    announcement_pkt: Vec<u8>,
     local_server_handle: Option<ThreadHandle>,
 }
 
@@ -23,7 +23,7 @@ impl PeerDiscoverer {
     pub fn new(id: PeerID, addr: PeerAddr) -> PeerDiscoverer {
         Self {
             peers: Arc::new(Mutex::new(PeerMap::new())),
-            announcement_pkt: AnnouncementPkt::new(id, addr),
+            announcement_pkt: Announcement::new(id, addr).as_bytes(),
             local_server_handle: None,
         }
     }
@@ -37,7 +37,7 @@ impl PeerDiscoverer {
 
     /// Announces the peer to other instances of the server.
     pub fn announce_peer(&self) -> io::Result<()> {
-        local::announce_peer(&self.announcement_pkt.as_bytes())
+        local::announce_peer(&self.announcement_pkt)
     }
 
     /// Returns the identifiers of all the discovered peers.
@@ -64,34 +64,53 @@ impl PeerDiscoverer {
     }
 }
 
-struct AnnouncementPkt<'a>(Packet<'a>);
+enum InvalidAnnouncement {
+    MissingPeerID,
+    MissingPeerAddr,
+    InvalidPacket(PacketParseError),
+}
 
-impl<'a> AnnouncementPkt<'a> {
-    pub fn new(id: PeerID, addr: PeerAddr) -> AnnouncementPkt<'a> {
-        let mut pkt = Packet::new();
-        pkt.set_header("id", id);
-        pkt.set_header("addr", addr);
+impl fmt::Display for InvalidAnnouncement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use self::InvalidAnnouncement::*;
 
-        AnnouncementPkt(pkt)
+        match self {
+            MissingPeerID => write!(f, "missing peer id"),
+            MissingPeerAddr => write!(f, "missing peer address"),
+            InvalidPacket(e) => write!(f, "invalid packet: {e}"),
+        }
+    }
+}
+
+struct Announcement {
+    peer_id: PeerID,
+    peer_addr: PeerAddr,
+}
+
+impl Announcement {
+    pub fn new(peer_id: PeerID, peer_addr: PeerAddr) -> Announcement {
+        Announcement { peer_id, peer_addr }
     }
 
-    pub fn from_bytes(bytes: &[u8]) -> Result<AnnouncementPkt, PacketParseError> {
-        Ok(AnnouncementPkt(Packet::from_bytes(bytes)?))
-    }
+    pub fn from_bytes(bytes: &[u8]) -> Result<Announcement, InvalidAnnouncement> {
+        let packet = Packet::from_bytes(bytes).map_err(InvalidAnnouncement::InvalidPacket)?;
 
-    pub fn get_peer_id(&self) -> Option<PeerID> {
-        self.0
+        let peer_id = packet
             .get_header("id")
             .and_then(|id| id.parse::<PeerID>().ok())
-    }
-
-    pub fn get_peer_addr(&self) -> Option<PeerAddr> {
-        self.0
+            .ok_or(InvalidAnnouncement::MissingPeerID)?;
+        let peer_addr = packet
             .get_header("addr")
             .and_then(|addr| addr.parse::<PeerAddr>().ok())
+            .ok_or(InvalidAnnouncement::MissingPeerAddr)?;
+
+        Ok(Announcement { peer_id, peer_addr })
     }
 
     pub fn as_bytes(&self) -> Vec<u8> {
-        self.0.as_bytes()
+        let mut packet = Packet::new();
+        packet.set_header("id", self.peer_id);
+        packet.set_header("addr", self.peer_addr);
+        packet.as_bytes()
     }
 }

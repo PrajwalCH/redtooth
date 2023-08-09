@@ -5,7 +5,7 @@ use std::net::{Ipv4Addr, UdpSocket};
 use std::sync::{Arc, Mutex, TryLockError};
 use std::thread::Builder as ThreadBuilder;
 
-use super::{AnnouncementPkt, PeerMap, ThreadHandle};
+use super::{Announcement, PeerMap, ThreadHandle};
 use crate::{elogln, logln};
 
 // Range between `224.0.0.0` to `224.0.0.250` is reserved or use by routing and maintenance
@@ -40,19 +40,17 @@ fn discover_peers(peer_map: Arc<Mutex<PeerMap>>) -> io::Result<()> {
             continue;
         };
 
-        let Some(pkt) = AnnouncementPkt::from_bytes(&raw_pkt[..pkt_len]).ok() else {
-            elogln!("Received a badly formatted packet from {announcement_addr}");
-            continue;
+        let mut announcement = match Announcement::from_bytes(&raw_pkt[..pkt_len]) {
+            Ok(a) => a,
+            Err(e) => {
+                elogln!("Received a badly formatted packet; {e}");
+                continue;
+            }
         };
-        let (Some(id), Some(mut addr)) = (pkt.get_peer_id(), pkt.get_peer_addr()) else {
-            elogln!("Peer id and address are missing from the packet");
-            continue
-        };
-
         // If the address present in a packet is unspecified (0.0.0.0), use the address from
         // which the peer announces itself.
-        if addr.ip().is_unspecified() {
-            addr.set_ip(announcement_addr.ip());
+        if announcement.peer_addr.ip().is_unspecified() {
+            announcement.peer_addr.set_ip(announcement_addr.ip());
         }
 
         // Unlock the map's lock ASAP using inner block.
@@ -65,8 +63,8 @@ fn discover_peers(peer_map: Arc<Mutex<PeerMap>>) -> io::Result<()> {
                     continue;
                 }
             };
-            peer_map.insert(id, addr);
+            peer_map.insert(announcement.peer_id, announcement.peer_addr);
         }
-        logln!("Discovered `{addr}`");
+        logln!("Discovered `{}`", announcement.peer_addr);
     }
 }
