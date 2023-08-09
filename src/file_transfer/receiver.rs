@@ -3,7 +3,8 @@ use std::io::{self, Read};
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 
-use crate::protocol::{FilePacket, PeerAddr};
+use super::FilePacket;
+use crate::protocol::PeerAddr;
 use crate::{elogln, logln};
 
 /// Starts receiving files on the `addr` and upon successful reception saves them
