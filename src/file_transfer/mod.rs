@@ -4,7 +4,7 @@ pub mod sender;
 use std::path::Path;
 use std::{fs, io, str};
 
-use crate::protocol::{Packet, PacketParseError};
+use crate::protocol::packet::{Packet, PacketParseError};
 
 /// A wrapper around [`Packet`] specialized for constructing a packet to send or receive files
 /// along with their associated metadata.

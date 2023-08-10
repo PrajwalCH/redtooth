@@ -5,9 +5,8 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::{fmt, io};
 
-use crate::protocol::PeerAddr;
-use crate::protocol::PeerID;
-use crate::protocol::{Packet, PacketParseError};
+use crate::protocol::packet::{Packet, PacketParseError};
+use crate::protocol::{PeerAddr, PeerID};
 
 type PeerMap = HashMap<PeerID, PeerAddr>;
 type ThreadHandle = JoinHandle<io::Result<()>>;

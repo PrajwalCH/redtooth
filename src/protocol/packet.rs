@@ -1,33 +1,12 @@
 use std::borrow::Cow;
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::fmt::{self, Write};
-use std::hash::{Hash, Hasher};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::{self, Utf8Error};
-use std::time::Instant;
 
-use crate::interface;
-
-const TCP_PORT: u16 = 25802;
 /// Represents a separator used to distinguish sections, such as headers and payload
 /// of the packet.
-const PACKET_SECTIONS_SEPARATOR: &[u8; 2] = b"::";
-const PACKET_HEADER_NAME_VALUE_SEPARATOR: char = '=';
-
-pub type PeerID = u64;
-pub type PeerAddr = SocketAddr;
-
-pub fn get_my_id() -> PeerID {
-    let mut hasher = DefaultHasher::new();
-    Instant::now().hash(&mut hasher);
-    hasher.finish()
-}
-
-pub fn get_my_addr() -> PeerAddr {
-    let ip_addr = IpAddr::V4(interface::local_ipv4_address().unwrap_or(Ipv4Addr::UNSPECIFIED));
-    PeerAddr::new(ip_addr, TCP_PORT)
-}
+const SECTIONS_SEPARATOR: &[u8; 2] = b"::";
+const HEADER_NAME_VALUE_SEPARATOR: char = '=';
 
 /// Represents possible errors that can occur when reconstructing a new [`Packet`]
 /// from the bytes.
@@ -52,7 +31,7 @@ impl fmt::Display for PacketParseError {
 
 /// Represents a packet used for transferring any data along with the additional information.
 ///
-/// The packet is divided into two sections separated by [`PACKET_SECTIONS_SEPARATOR`]:
+/// The packet is divided into two sections separated by [`SECTIONS_SEPARATOR`]:
 ///
 /// - **Headers** allow the sender and receiver to either pass additional information for the
 /// communication or to pass more information about the data to be transmitted.
@@ -77,16 +56,16 @@ impl<'p> Packet<'p> {
     /// This function attempts to reconstruct a new [`Packet`] from the provided bytes
     /// with the same state as it was originally created using [`Packet::as_bytes`].
     pub fn from_bytes(bytes: &[u8]) -> Result<Packet, PacketParseError> {
-        let separator_len = PACKET_SECTIONS_SEPARATOR.len();
+        let separator_len = SECTIONS_SEPARATOR.len();
         let separator_index = bytes
             .windows(separator_len)
-            .position(|bytes| bytes == PACKET_SECTIONS_SEPARATOR)
+            .position(|bytes| bytes == SECTIONS_SEPARATOR)
             .ok_or(PacketParseError::MissingSectionsSeparator)?;
 
         let headers = str::from_utf8(&bytes[..separator_index])
             .map_err(PacketParseError::InvalidUtf8)?
             .lines()
-            .filter_map(|header| header.split_once(PACKET_HEADER_NAME_VALUE_SEPARATOR))
+            .filter_map(|header| header.split_once(HEADER_NAME_VALUE_SEPARATOR))
             .map(|(name, value)| (name.to_string(), value.to_string()))
             .collect::<HashMap<String, String>>();
         let payload = bytes
@@ -128,11 +107,11 @@ impl<'p> Packet<'p> {
         let mut headers = String::new();
 
         for (name, value) in self.headers.iter() {
-            writeln!(headers, "{name}{PACKET_HEADER_NAME_VALUE_SEPARATOR}{value}").unwrap();
+            writeln!(headers, "{name}{HEADER_NAME_VALUE_SEPARATOR}{value}").unwrap();
         }
         let mut final_bytes = Vec::new();
         final_bytes.extend_from_slice(headers.as_bytes());
-        final_bytes.extend_from_slice(PACKET_SECTIONS_SEPARATOR);
+        final_bytes.extend_from_slice(SECTIONS_SEPARATOR);
 
         if let Some(payload) = self.get_payload() {
             final_bytes.extend_from_slice(payload);
