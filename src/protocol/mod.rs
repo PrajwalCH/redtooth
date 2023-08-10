@@ -7,6 +7,7 @@ use std::time::Instant;
 
 use crate::interface;
 
+const DEFAULT_PEER_IP: Ipv4Addr = Ipv4Addr::UNSPECIFIED;
 const DEFAULT_PEER_PORT: u16 = 25802;
 
 pub type PeerID = u64;
@@ -19,6 +20,6 @@ pub fn get_my_id() -> PeerID {
 }
 
 pub fn get_my_addr() -> PeerAddr {
-    let ip_addr = IpAddr::V4(interface::local_ipv4_address().unwrap_or(Ipv4Addr::UNSPECIFIED));
+    let ip_addr = IpAddr::V4(interface::local_ipv4_address().unwrap_or(DEFAULT_PEER_IP));
     PeerAddr::new(ip_addr, DEFAULT_PEER_PORT)
 }
