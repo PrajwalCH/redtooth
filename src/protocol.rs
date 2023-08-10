@@ -13,6 +13,7 @@ const TCP_PORT: u16 = 25802;
 /// Represents a separator used to distinguish sections, such as headers and payload
 /// of the packet.
 const PACKET_SECTIONS_SEPARATOR: &[u8; 2] = b"::";
+const PACKET_HEADER_NAME_VALUE_SEPARATOR: char = '=';
 
 pub type PeerID = u64;
 pub type PeerAddr = SocketAddr;
@@ -85,8 +86,8 @@ impl<'p> Packet<'p> {
         let headers = str::from_utf8(&bytes[..separator_index])
             .map_err(PacketParseError::InvalidUtf8)?
             .lines()
-            .filter_map(|header| header.split_once(':'))
-            .map(|(name, value)| (name.to_string(), value.trim().to_string()))
+            .filter_map(|header| header.split_once(PACKET_HEADER_NAME_VALUE_SEPARATOR))
+            .map(|(name, value)| (name.to_string(), value.to_string()))
             .collect::<HashMap<String, String>>();
         let payload = bytes
             .get(separator_index + separator_len..)
@@ -127,7 +128,7 @@ impl<'p> Packet<'p> {
         let mut headers = String::new();
 
         for (name, value) in self.headers.iter() {
-            writeln!(headers, "{name}: {value}").unwrap();
+            writeln!(headers, "{name}{PACKET_HEADER_NAME_VALUE_SEPARATOR}{value}").unwrap();
         }
         let mut final_bytes = Vec::new();
         final_bytes.extend_from_slice(headers.as_bytes());
