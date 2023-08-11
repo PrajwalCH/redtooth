@@ -2,6 +2,7 @@ mod app;
 mod cli;
 mod file_transfer;
 mod interface;
+mod ipc;
 mod macros;
 mod peer_discoverer;
 mod protocol;
