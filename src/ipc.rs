@@ -40,13 +40,13 @@ impl TryFrom<Packet<'_>> for Command {
 }
 
 /// A structure representing an IPC socket server.
-pub struct IpcListener(UnixListener);
+pub struct IPCListener(UnixListener);
 
-impl IpcListener {
-    /// Creates a new [IpcListener] bound to the [`SOCK_FILE_PATH`].
-    pub fn new() -> IpcListener {
+impl IPCListener {
+    /// Creates a new [IPCListener] bound to the [`SOCK_FILE_PATH`].
+    pub fn new() -> IPCListener {
         let listener = UnixListener::bind(SOCK_FILE_PATH).unwrap();
-        IpcListener(listener)
+        IPCListener(listener)
     }
 
     /// Returns an iterator over incoming messages.
@@ -55,7 +55,7 @@ impl IpcListener {
     }
 }
 
-/// An iterator over incoming messages to a [`IpcListener`].
+/// An iterator over incoming messages to a [`IPCListener`].
 ///
 /// It will never return None.
 pub struct IncomingMessage<'l>(Incoming<'l>);
