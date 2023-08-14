@@ -15,6 +15,30 @@ pub enum Command {
     SendTo(PeerID, String),
 }
 
+impl TryFrom<Packet<'_>> for Command {
+    type Error = ();
+
+    fn try_from(p: Packet) -> Result<Self, Self::Error> {
+        let command = match p.get_header("command").ok_or(())? {
+            "myid" => Command::MyID,
+            "myaddr" => Command::MyAddr,
+            "discovered_peers" => Command::DiscoveredPeers,
+            "send" => {
+                let file_name = p.get_header("args").ok_or(())?.to_string();
+                Command::Send(file_name)
+            }
+            "send_to" => {
+                let args = p.get_header("args").ok_or(())?.split_once(' ').ok_or(())?;
+                let peer_id = args.0.parse::<PeerID>().map_err(|_| ())?;
+                let file_name = args.1.to_string();
+                Command::SendTo(peer_id, file_name)
+            }
+            _ => return Err(()),
+        };
+        Ok(command)
+    }
+}
+
 /// A structure representing an IPC socket server.
 pub struct IpcListener(UnixListener);
 
@@ -49,8 +73,10 @@ impl<'l> Iterator for IncomingMessage<'l> {
         if let Err(e) = stream.read_to_end(&mut raw_bytes) {
             return Some(Err(e));
         }
-        let _packet = Packet::from_bytes(&raw_bytes).ok()?;
-        Some(Ok(Message::new(Command::MyID, stream)))
+        // Ignore the invalid packet.
+        let packet = Packet::from_bytes(&raw_bytes).ok()?;
+        let command = Command::try_from(packet).ok()?;
+        Some(Ok(Message::new(command, stream)))
     }
 }
 
