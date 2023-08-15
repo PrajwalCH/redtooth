@@ -14,7 +14,6 @@ const HEADER_NAME_VALUE_SEPARATOR: char = '=';
 /// This error is returned from the [`Packet::from_bytes`].
 #[derive(Debug)]
 pub enum PacketParseError {
-    MissingSectionsSeparator,
     InvalidUtf8(Utf8Error),
 }
 
@@ -23,7 +22,6 @@ impl fmt::Display for PacketParseError {
         use self::PacketParseError::*;
 
         match self {
-            MissingSectionsSeparator => write!(f, "missing sections separator"),
             InvalidUtf8(e) => write!(f, "{e}"),
         }
     }
@@ -59,18 +57,18 @@ impl<'p> Packet<'p> {
         let separator_len = SECTIONS_SEPARATOR.len();
         let separator_index = bytes
             .windows(separator_len)
-            .position(|bytes| bytes == SECTIONS_SEPARATOR)
-            .ok_or(PacketParseError::MissingSectionsSeparator)?;
+            .position(|bytes| bytes == SECTIONS_SEPARATOR);
 
-        let headers = str::from_utf8(&bytes[..separator_index])
+        // If the sections separator is not present, then it is header only packet.
+        let headers = separator_index
+            .map_or(str::from_utf8(bytes), |idx| str::from_utf8(&bytes[..idx]))
             .map_err(PacketParseError::InvalidUtf8)?
             .lines()
             .filter_map(|header| header.split_once(HEADER_NAME_VALUE_SEPARATOR))
             .map(|(name, value)| (name.to_string(), value.to_string()))
             .collect::<HashMap<String, String>>();
-        let payload = bytes
-            .get(separator_index + separator_len..)
-            .map(Cow::Borrowed);
+        let payload =
+            separator_index.and_then(|idx| bytes.get(idx + separator_len..).map(Cow::Borrowed));
 
         Ok(Packet { headers, payload })
     }
@@ -111,9 +109,9 @@ impl<'p> Packet<'p> {
         }
         let mut final_bytes = Vec::new();
         final_bytes.extend_from_slice(headers.as_bytes());
-        final_bytes.extend_from_slice(SECTIONS_SEPARATOR);
 
         if let Some(payload) = self.get_payload() {
+            final_bytes.extend_from_slice(SECTIONS_SEPARATOR);
             final_bytes.extend_from_slice(payload);
         }
         final_bytes
