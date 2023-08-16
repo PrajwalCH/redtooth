@@ -1,7 +1,7 @@
 use std::io::{self, Read, Write};
 use std::os::unix::net::{Incoming, UnixListener, UnixStream};
+use std::str::FromStr;
 
-use crate::protocol::packet::Packet;
 use crate::protocol::PeerID;
 
 pub const SOCK_FILE_PATH: &str = "/tmp/rapi.sock";
@@ -15,27 +15,28 @@ pub enum Command {
     SendTo(PeerID, String),
 }
 
-impl TryFrom<Packet<'_>> for Command {
-    type Error = ();
+impl FromStr for Command {
+    type Err = ();
 
-    fn try_from(p: Packet) -> Result<Self, Self::Error> {
-        let command = match p.get_header("command").ok_or(())? {
-            "myid" => Command::MyID,
-            "myaddr" => Command::MyAddr,
-            "discovered_peers" => Command::DiscoveredPeers,
-            "send" => {
-                let file_name = p.get_header("args").ok_or(())?.to_string();
-                Command::Send(file_name)
-            }
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (cmd, args) = s
+            .strip_prefix('/')
+            .and_then(|v| v.split_once(' ').or(Some((v, ""))))
+            .ok_or(())?;
+
+        match cmd {
+            "myid" => Ok(Command::MyID),
+            "myaddr" => Ok(Command::MyAddr),
+            "discovered_peers" => Ok(Command::DiscoveredPeers),
+            "send" => Ok(Command::Send(args.to_string())),
             "send_to" => {
-                let args = p.get_header("args").ok_or(())?.split_once(' ').ok_or(())?;
+                let args = args.split_once(' ').ok_or(())?;
                 let peer_id = args.0.parse::<PeerID>().map_err(|_| ())?;
                 let file_name = args.1.to_string();
-                Command::SendTo(peer_id, file_name)
+                Ok(Command::SendTo(peer_id, file_name))
             }
-            _ => return Err(()),
-        };
-        Ok(command)
+            _ => Err(()),
+        }
     }
 }
 
@@ -68,14 +69,12 @@ impl<'l> Iterator for IncomingMessage<'l> {
             Ok(s) => s,
             Err(e) => return Some(Err(e)),
         };
-        let mut raw_bytes = Vec::new();
+        let mut request = String::new();
 
-        if let Err(e) = stream.read_to_end(&mut raw_bytes) {
+        if let Err(e) = stream.read_to_string(&mut request) {
             return Some(Err(e));
         }
-        // Ignore the invalid packet.
-        let packet = Packet::from_bytes(&raw_bytes).ok()?;
-        let command = Command::try_from(packet).ok()?;
+        let command = Command::from_str(&request).ok()?;
         Some(Ok(Message::new(command, stream)))
     }
 }
