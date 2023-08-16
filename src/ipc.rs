@@ -1,3 +1,4 @@
+use std::fmt;
 use std::io::{self, Read, Write};
 use std::os::unix::net::{Incoming, UnixListener, UnixStream};
 use std::str::FromStr;
@@ -5,40 +6,6 @@ use std::str::FromStr;
 use crate::protocol::PeerID;
 
 pub const SOCK_FILE_PATH: &str = "/tmp/rapi.sock";
-
-/// Represents a command sent to IPC server.
-pub enum Command {
-    MyID,
-    MyAddr,
-    DiscoveredPeers,
-    Send(String),
-    SendTo(PeerID, String),
-}
-
-impl FromStr for Command {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (cmd, args) = s
-            .strip_prefix('/')
-            .and_then(|v| v.split_once(' ').or(Some((v, ""))))
-            .ok_or(())?;
-
-        match cmd {
-            "myid" => Ok(Command::MyID),
-            "myaddr" => Ok(Command::MyAddr),
-            "discovered_peers" => Ok(Command::DiscoveredPeers),
-            "send" => Ok(Command::Send(args.to_string())),
-            "send_to" => {
-                let args = args.split_once(' ').ok_or(())?;
-                let peer_id = args.0.parse::<PeerID>().map_err(|_| ())?;
-                let file_name = args.1.to_string();
-                Ok(Command::SendTo(peer_id, file_name))
-            }
-            _ => Err(()),
-        }
-    }
-}
 
 /// A structure representing an IPC socket server.
 pub struct IPCListener(UnixListener);
@@ -95,5 +62,51 @@ impl Message {
         D: AsRef<[u8]>,
     {
         self.stream.write_all(data.as_ref())
+    }
+}
+
+/// Represents a command sent to IPC server.
+pub enum Command {
+    MyID,
+    MyAddr,
+    DiscoveredPeers,
+    Send(String),
+    SendTo(PeerID, String),
+}
+
+impl FromStr for Command {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (cmd, args) = s
+            .strip_prefix('/')
+            .and_then(|v| v.split_once(' ').or(Some((v, ""))))
+            .ok_or(())?;
+
+        match cmd {
+            "myid" => Ok(Command::MyID),
+            "myaddr" => Ok(Command::MyAddr),
+            "discovered_peers" => Ok(Command::DiscoveredPeers),
+            "send" => Ok(Command::Send(args.to_string())),
+            "send_to" => {
+                let args = args.split_once(' ').ok_or(())?;
+                let peer_id = args.0.parse::<PeerID>().map_err(|_| ())?;
+                let file_name = args.1.to_string();
+                Ok(Command::SendTo(peer_id, file_name))
+            }
+            _ => Err(()),
+        }
+    }
+}
+
+impl fmt::Display for Command {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Command::MyID => write!(f, "/myid"),
+            Command::MyAddr => write!(f, "/myaddr"),
+            Command::DiscoveredPeers => write!(f, "/discovered_peers"),
+            Command::Send(file_name) => write!(f, "/send {file_name}"),
+            Command::SendTo(peer_id, file_name) => write!(f, "/send_to {peer_id} {file_name}"),
+        }
     }
 }
