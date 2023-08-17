@@ -8,18 +8,18 @@ use crate::protocol::PeerID;
 pub const SOCK_FILE_PATH: &str = "/tmp/rapi.sock";
 
 /// A structure representing an IPC socket server.
-pub struct IPCListener(UnixListener);
+pub struct IPCServer(UnixListener);
 
-impl IPCListener {
-    /// Creates a new [IPCListener] bound to the [`SOCK_FILE_PATH`].
-    pub fn new() -> IPCListener {
+impl IPCServer {
+    /// Creates a new [IPCServer] bound to the [`SOCK_FILE_PATH`].
+    pub fn new() -> IPCServer {
         let listener = UnixListener::bind(SOCK_FILE_PATH).unwrap();
-        IPCListener(listener)
+        IPCServer(listener)
     }
 
     /// Returns an iterator over incoming messages.
     pub fn incoming_messages(&self) -> IncomingMessages {
-        IncomingMessages { listener: self }
+        IncomingMessages { server: self }
     }
 
     /// Accepts a new incoming connection and returns a new message read from it.
@@ -38,18 +38,18 @@ impl IPCListener {
     }
 }
 
-/// An iterator over incoming messages to a [`IPCListener`].
+/// An iterator over incoming messages to a [`IPCServer`].
 ///
 /// It will never return None.
-pub struct IncomingMessages<'l> {
-    listener: &'l IPCListener,
+pub struct IncomingMessages<'s> {
+    server: &'s IPCServer,
 }
 
-impl<'l> Iterator for IncomingMessages<'l> {
+impl<'s> Iterator for IncomingMessages<'s> {
     type Item = Message;
 
     fn next(&mut self) -> Option<Message> {
-        self.listener.recv_message().ok()
+        self.server.recv_message().ok()
     }
 }
 
