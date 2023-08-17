@@ -18,17 +18,17 @@ impl IPCListener {
     }
 
     /// Returns an iterator over incoming messages.
-    pub fn incoming_message(&self) -> IncomingMessage {
-        IncomingMessage(self.0.incoming())
+    pub fn incoming_messages(&self) -> IncomingMessages {
+        IncomingMessages(self.0.incoming())
     }
 }
 
 /// An iterator over incoming messages to a [`IPCListener`].
 ///
 /// It will never return None.
-pub struct IncomingMessage<'l>(Incoming<'l>);
+pub struct IncomingMessages<'l>(Incoming<'l>);
 
-impl<'l> Iterator for IncomingMessage<'l> {
+impl<'l> Iterator for IncomingMessages<'l> {
     type Item = io::Result<Message>;
 
     fn next(&mut self) -> Option<io::Result<Message>> {
