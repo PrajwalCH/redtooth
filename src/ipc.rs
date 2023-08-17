@@ -1,6 +1,6 @@
 use std::fmt;
 use std::io::{self, Read, Write};
-use std::os::unix::net::{Incoming, UnixListener, UnixStream};
+use std::os::unix::net::{UnixListener, UnixStream};
 use std::str::FromStr;
 
 use crate::protocol::PeerID;
@@ -19,30 +19,37 @@ impl IPCListener {
 
     /// Returns an iterator over incoming messages.
     pub fn incoming_messages(&self) -> IncomingMessages {
-        IncomingMessages(self.0.incoming())
+        IncomingMessages { listener: self }
+    }
+
+    /// Accepts a new incoming connection and returns a new message read from it.
+    ///
+    /// This function will block the calling thread until a new connection is established.
+    /// When established, it reads the message and returns it.
+    fn recv_message(&self) -> io::Result<Message> {
+        let mut stream = self.0.accept().map(|(stream, _)| stream)?;
+        let mut request = String::new();
+        stream.read_to_string(&mut request)?;
+
+        match Command::from_str(&request) {
+            Ok(c) => Ok(Message::new(c, stream)),
+            Err(_) => Err(io::Error::new(io::ErrorKind::Other, "invalid command")),
+        }
     }
 }
 
 /// An iterator over incoming messages to a [`IPCListener`].
 ///
 /// It will never return None.
-pub struct IncomingMessages<'l>(Incoming<'l>);
+pub struct IncomingMessages<'l> {
+    listener: &'l IPCListener,
+}
 
 impl<'l> Iterator for IncomingMessages<'l> {
-    type Item = io::Result<Message>;
+    type Item = Message;
 
-    fn next(&mut self) -> Option<io::Result<Message>> {
-        let mut stream = match self.0.next()? {
-            Ok(s) => s,
-            Err(e) => return Some(Err(e)),
-        };
-        let mut request = String::new();
-
-        if let Err(e) = stream.read_to_string(&mut request) {
-            return Some(Err(e));
-        }
-        let command = Command::from_str(&request).ok()?;
-        Some(Ok(Message::new(command, stream)))
+    fn next(&mut self) -> Option<Message> {
+        self.listener.recv_message().ok()
     }
 }
 
