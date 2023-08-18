@@ -5,10 +5,10 @@ use std::thread::{self, Builder as ThreadBuilder};
 use std::time::Duration;
 
 use crate::cli::{self, Command};
-use crate::elogln;
-use crate::file_transfer::{receiver, sender};
 use crate::discovery::PeerDiscoverer;
+use crate::elogln;
 use crate::protocol::{self, PeerAddr, PeerID};
+use crate::transfer::{receiver, sender};
 
 #[allow(dead_code)]
 pub struct App {

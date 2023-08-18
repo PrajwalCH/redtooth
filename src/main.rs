@@ -1,11 +1,11 @@
 mod app;
 mod cli;
-mod file_transfer;
+mod discovery;
 mod interface;
 mod ipc;
 mod macros;
-mod discovery;
 mod protocol;
+mod transfer;
 
 use crate::app::App;
 
