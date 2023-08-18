@@ -55,16 +55,19 @@ impl<'s> Iterator for IncomingMessages<'s> {
 /// Represents a message sent to IPC server.
 pub struct Message {
     command: Command,
-    stream: UnixStream,
+    response_stream: UnixStream,
 }
 
 impl Message {
-    pub fn new(command: Command, stream: UnixStream) -> Message {
-        Message { command, stream }
+    pub fn new(command: Command, response_stream: UnixStream) -> Message {
+        Message {
+            command,
+            response_stream,
+        }
     }
 
     pub fn response(&mut self, data: impl fmt::Display) -> io::Result<()> {
-        write!(self.stream, "{data}")
+        write!(self.response_stream, "{data}")
     }
 }
 
