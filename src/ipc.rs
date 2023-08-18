@@ -12,9 +12,8 @@ pub struct IPCServer(UnixListener);
 
 impl IPCServer {
     /// Creates a new [IPCServer] bound to the [`SOCK_FILE_PATH`].
-    pub fn new() -> IPCServer {
-        let listener = UnixListener::bind(SOCK_FILE_PATH).unwrap();
-        IPCServer(listener)
+    pub fn new() -> io::Result<IPCServer> {
+        Ok(IPCServer(UnixListener::bind(SOCK_FILE_PATH)?))
     }
 
     /// Returns an iterator over incoming messages.
