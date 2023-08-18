@@ -1,7 +1,6 @@
 use std::fmt;
 use std::io::{self, Read, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::str::FromStr;
 
 use crate::protocol::PeerID;
 
@@ -29,11 +28,7 @@ impl IPCServer {
         let mut stream = self.0.accept().map(|(stream, _)| stream)?;
         let mut request = String::new();
         stream.read_to_string(&mut request)?;
-
-        match Command::from_str(&request) {
-            Ok(c) => Ok(Message::new(c, stream)),
-            Err(_) => Err(io::Error::new(io::ErrorKind::Other, "invalid command")),
-        }
+        Ok(Message::new(request, stream))
     }
 }
 
@@ -54,15 +49,36 @@ impl<'s> Iterator for IncomingMessages<'s> {
 
 /// Represents a message sent to IPC server.
 pub struct Message {
-    command: Command,
+    request: String,
     response_stream: UnixStream,
 }
 
 impl Message {
-    pub fn new(command: Command, response_stream: UnixStream) -> Message {
+    pub fn new(request: String, response_stream: UnixStream) -> Message {
         Message {
-            command,
+            request,
             response_stream,
+        }
+    }
+
+    pub fn command(&self) -> Option<Command> {
+        let (cmd, args) = self
+            .request
+            .strip_prefix('/')
+            .and_then(|v| v.split_once(' ').or(Some((v, ""))))?;
+
+        match cmd {
+            "myid" => Some(Command::MyID),
+            "myaddr" => Some(Command::MyAddr),
+            "discovered_peers" => Some(Command::DiscoveredPeers),
+            "send" => Some(Command::Send(args.to_string())),
+            "send_to" => {
+                let args = args.split_once(' ')?;
+                let peer_id = args.0.parse::<PeerID>().ok()?;
+                let file_name = args.1.to_string();
+                Some(Command::SendTo(peer_id, file_name))
+            }
+            _ => None,
         }
     }
 
@@ -78,31 +94,6 @@ pub enum Command {
     DiscoveredPeers,
     Send(String),
     SendTo(PeerID, String),
-}
-
-impl FromStr for Command {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (cmd, args) = s
-            .strip_prefix('/')
-            .and_then(|v| v.split_once(' ').or(Some((v, ""))))
-            .ok_or(())?;
-
-        match cmd {
-            "myid" => Ok(Command::MyID),
-            "myaddr" => Ok(Command::MyAddr),
-            "discovered_peers" => Ok(Command::DiscoveredPeers),
-            "send" => Ok(Command::Send(args.to_string())),
-            "send_to" => {
-                let args = args.split_once(' ').ok_or(())?;
-                let peer_id = args.0.parse::<PeerID>().map_err(|_| ())?;
-                let file_name = args.1.to_string();
-                Ok(Command::SendTo(peer_id, file_name))
-            }
-            _ => Err(()),
-        }
-    }
 }
 
 impl fmt::Display for Command {
