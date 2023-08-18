@@ -63,11 +63,8 @@ impl Message {
         Message { command, stream }
     }
 
-    pub fn response<D>(&mut self, data: D) -> io::Result<()>
-    where
-        D: AsRef<[u8]>,
-    {
-        self.stream.write_all(data.as_ref())
+    pub fn response(&mut self, data: impl fmt::Display) -> io::Result<()> {
+        write!(self.stream, "{data}")
     }
 }
 
