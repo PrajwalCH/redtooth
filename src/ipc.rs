@@ -70,7 +70,7 @@ impl Message {
         match cmd {
             "myid" => Some(Command::MyID),
             "myaddr" => Some(Command::MyAddr),
-            "discovered_peers" => Some(Command::DiscoveredPeers),
+            "peers" => Some(Command::Peers),
             "send" => Some(Command::Send(args.to_string())),
             "send_to" => {
                 let args = args.split_once(' ')?;
@@ -91,7 +91,7 @@ impl Message {
 pub enum Command {
     MyID,
     MyAddr,
-    DiscoveredPeers,
+    Peers,
     Send(String),
     SendTo(PeerID, String),
 }
@@ -101,7 +101,7 @@ impl fmt::Display for Command {
         match self {
             Command::MyID => write!(f, "/myid"),
             Command::MyAddr => write!(f, "/myaddr"),
-            Command::DiscoveredPeers => write!(f, "/discovered_peers"),
+            Command::Peers => write!(f, "/peers"),
             Command::Send(file_name) => write!(f, "/send {file_name}"),
             Command::SendTo(peer_id, file_name) => write!(f, "/send_to {peer_id} {file_name}"),
         }
