@@ -7,7 +7,7 @@ use std::time::Duration;
 use crate::cli::{self, Command};
 use crate::elogln;
 use crate::file_transfer::{receiver, sender};
-use crate::peer_discoverer::PeerDiscoverer;
+use crate::discovery::PeerDiscoverer;
 use crate::protocol::{self, PeerAddr, PeerID};
 
 #[allow(dead_code)]

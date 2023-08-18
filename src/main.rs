@@ -4,7 +4,7 @@ mod file_transfer;
 mod interface;
 mod ipc;
 mod macros;
-mod peer_discoverer;
+mod discovery;
 mod protocol;
 
 use crate::app::App;
