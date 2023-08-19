@@ -6,6 +6,15 @@ use crate::protocol::PeerID;
 
 pub const SOCK_FILE_PATH: &str = "/tmp/rapi.sock";
 
+/// Represents a command sent to IPC server.
+pub enum Command {
+    MyID,
+    MyAddr,
+    Peers,
+    Send(String),
+    SendTo(PeerID, String),
+}
+
 /// A structure representing an IPC socket server.
 pub struct IPCServer(UnixListener);
 
@@ -87,23 +96,17 @@ impl Message {
     }
 }
 
-/// Represents a command sent to IPC server.
-pub enum Command {
-    MyID,
-    MyAddr,
-    Peers,
-    Send(String),
-    SendTo(PeerID, String),
-}
+pub fn send_request(c: Command) -> io::Result<String> {
+    let mut stream = UnixStream::connect(SOCK_FILE_PATH)?;
 
-impl fmt::Display for Command {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Command::MyID => write!(f, "/myid"),
-            Command::MyAddr => write!(f, "/myaddr"),
-            Command::Peers => write!(f, "/peers"),
-            Command::Send(file_name) => write!(f, "/send {file_name}"),
-            Command::SendTo(peer_id, file_name) => write!(f, "/send_to {peer_id} {file_name}"),
-        }
-    }
+    match c {
+        Command::MyID => write!(stream, "/myid")?,
+        Command::MyAddr => write!(stream, "/myaddr")?,
+        Command::Peers => write!(stream, "/peers")?,
+        Command::Send(file_name) => write!(stream, "/send {file_name}")?,
+        Command::SendTo(peer_id, file_name) => write!(stream, "/send_to {peer_id} {file_name}")?,
+    };
+    let mut response = String::new();
+    stream.read_to_string(&mut response)?;
+    Ok(response)
 }
