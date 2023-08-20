@@ -1,16 +1,15 @@
 use std::env;
-use std::io::{self, Write};
+use std::io;
 use std::path::PathBuf;
 use std::thread::{self, Builder as ThreadBuilder};
 use std::time::Duration;
 
-use crate::cli::{self, Command};
 use crate::discovery::PeerDiscoverer;
 use crate::elogln;
+use crate::ipc::{Command, IPCServer, Message};
 use crate::protocol::{self, PeerAddr, PeerID};
 use crate::transfer::{receiver, sender};
 
-#[allow(dead_code)]
 pub struct App {
     my_id: PeerID,
     my_addr: PeerAddr,
@@ -47,19 +46,14 @@ impl App {
 
         // Wait for a short duration to allow other threads to fully start up.
         thread::sleep(Duration::from_millis(20));
-        // TODO: Implement either ipc or http api server so that both cli and web ui can talk.
-        let mut cli_input_buffer = String::new();
+        let ipc = IPCServer::new()?;
 
-        loop {
-            cli_input_buffer.clear();
-            print!("> ");
-            io::stdout().flush()?;
-
-            match cli::read_command(&mut cli_input_buffer) {
-                Ok(c) => self.handle_cli_command(c),
-                Err(e) => elogln!("Failed to read input: {e}"),
-            }
+        for message in ipc.incoming_messages() {
+            if let Err(e) = self.handle_ipc_message(message) {
+                elogln!("Failed to handle an ipc message: {e}");
+            };
         }
+        Ok(())
     }
 
     fn spawn_file_receiver(&self) -> io::Result<()> {
@@ -70,39 +64,33 @@ impl App {
         Ok(())
     }
 
-    fn handle_cli_command(&self, cmd: Command) {
+    fn handle_ipc_message(&self, mut msg: Message) -> io::Result<()> {
+        let Some(cmd) = msg.command() else {
+            return Ok(());
+        };
+
         match cmd {
-            Command::MyIp => {
-                println!("{}", self.my_addr.ip());
-            }
-            Command::List => {
-                if let Some(ids) = self.peer_discoverer.get_discovered_peer_ids() {
-                    for id in ids {
-                        println!("{id}");
-                    }
-                    return;
+            Command::MyID => msg.response(self.my_id),
+            Command::MyAddr => msg.response(self.my_addr),
+            Command::Peers => match self.peer_discoverer.get_discovered_peer_ids() {
+                Some(ids) => {
+                    let ids = ids.iter().map(|&id| format!("{id}\n")).collect::<String>();
+                    msg.response(ids)
                 }
-                println!("No peers found");
-            }
-            Command::Send(file_path) => {
-                let Some(addrs) = self.peer_discoverer.get_discovered_peer_addrs() else {
-                    println!("No peers found");
-                    return;
-                };
-                if let Err(e) = sender::send_file_to_all(&addrs, file_path) {
-                    eprintln!("Failed to send file: {e}");
-                }
-            }
+                None => msg.response("No peers found"),
+            },
+            Command::Send(file_path) => match self.peer_discoverer.get_discovered_peer_addrs() {
+                Some(addrs) => sender::send_file_to_all(&addrs, file_path)
+                    .or_else(|_| msg.response("Failed to send file")),
+                None => msg.response("No peers found"),
+            },
             Command::SendTo(peer_id, file_path) => {
-                let Some(addr) = self.peer_discoverer.find_peer_addr_by_id(peer_id) else {
-                    println!("No peers found that matches the given identifier");
-                    return;
-                };
-                if let Err(e) = sender::send_file_to(addr, file_path) {
-                    eprintln!("Failed to send file: {e}");
+                match self.peer_discoverer.find_peer_addr_by_id(peer_id) {
+                    Some(addr) => sender::send_file_to(addr, file_path)
+                        .or_else(|_| msg.response("Failed to send file: {e}")),
+                    None => msg.response("No peers found that matches the given identifier"),
                 }
             }
-            Command::Unknown => println!("Unknown command"),
         }
     }
 }
