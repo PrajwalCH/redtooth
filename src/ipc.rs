@@ -1,19 +1,10 @@
-use std::fmt;
 use std::io::{self, Read, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
 
+use crate::api::{Command, Message, ReadMessage};
 use crate::protocol::PeerID;
 
 pub const SOCK_FILE_PATH: &str = "/tmp/rapi.sock";
-
-/// Represents a command sent to IPC server.
-pub enum Command {
-    MyID,
-    MyAddr,
-    Peers,
-    Send(String),
-    SendTo(PeerID, String),
-}
 
 /// A structure representing an IPC socket server.
 pub struct IPCServer(UnixListener);
@@ -23,76 +14,41 @@ impl IPCServer {
     pub fn new() -> io::Result<IPCServer> {
         Ok(IPCServer(UnixListener::bind(SOCK_FILE_PATH)?))
     }
+}
 
-    /// Returns an iterator over incoming messages.
-    pub fn incoming_messages(&self) -> IncomingMessages {
-        IncomingMessages { server: self }
-    }
-
+impl ReadMessage for IPCServer {
     /// Accepts a new incoming connection and returns a new message read from it.
     ///
     /// This function will block the calling thread until a new connection is established.
     /// When established, it reads the message and returns it.
-    fn recv_message(&self) -> io::Result<Message> {
+    fn read_message(&self) -> io::Result<Message> {
         let mut stream = self.0.accept().map(|(stream, _)| stream)?;
         let mut request = String::new();
         stream.read_to_string(&mut request)?;
-        Ok(Message::new(request, stream))
+
+        let command = parse_request(&request)
+            .ok_or(io::Error::new(io::ErrorKind::Other, "invalid command"))?;
+        Ok(Message::new(command, Box::new(stream)))
     }
 }
 
-/// An iterator over incoming messages to a [`IPCServer`].
-///
-/// It will never return None.
-pub struct IncomingMessages<'s> {
-    server: &'s IPCServer,
-}
+fn parse_request(req: &str) -> Option<Command> {
+    let (cmd, args) = req
+        .strip_prefix('/')
+        .and_then(|v| v.split_once(' ').or(Some((v, ""))))?;
 
-impl<'s> Iterator for IncomingMessages<'s> {
-    type Item = Message;
-
-    fn next(&mut self) -> Option<Message> {
-        self.server.recv_message().ok()
-    }
-}
-
-/// Represents a message sent to IPC server.
-pub struct Message {
-    request: String,
-    response_stream: UnixStream,
-}
-
-impl Message {
-    pub fn new(request: String, response_stream: UnixStream) -> Message {
-        Message {
-            request,
-            response_stream,
+    match cmd {
+        "myid" => Some(Command::MyID),
+        "myaddr" => Some(Command::MyAddr),
+        "peers" => Some(Command::Peers),
+        "send" => Some(Command::Send(args.to_string())),
+        "send_to" => {
+            let args = args.split_once(' ')?;
+            let peer_id = args.0.parse::<PeerID>().ok()?;
+            let file_name = args.1.to_string();
+            Some(Command::SendTo(peer_id, file_name))
         }
-    }
-
-    pub fn command(&self) -> Option<Command> {
-        let (cmd, args) = self
-            .request
-            .strip_prefix('/')
-            .and_then(|v| v.split_once(' ').or(Some((v, ""))))?;
-
-        match cmd {
-            "myid" => Some(Command::MyID),
-            "myaddr" => Some(Command::MyAddr),
-            "peers" => Some(Command::Peers),
-            "send" => Some(Command::Send(args.to_string())),
-            "send_to" => {
-                let args = args.split_once(' ')?;
-                let peer_id = args.0.parse::<PeerID>().ok()?;
-                let file_name = args.1.to_string();
-                Some(Command::SendTo(peer_id, file_name))
-            }
-            _ => None,
-        }
-    }
-
-    pub fn response(&mut self, data: impl fmt::Display) -> io::Result<()> {
-        write!(self.response_stream, "{data}")
+        _ => None,
     }
 }
 

@@ -4,9 +4,10 @@ use std::path::PathBuf;
 use std::thread::{self, Builder as ThreadBuilder};
 use std::time::Duration;
 
+use crate::api::{Api, Command, Message};
 use crate::discovery::PeerDiscoverer;
 use crate::elogln;
-use crate::ipc::{Command, IPCServer, Message};
+use crate::ipc::IPCServer;
 use crate::protocol::{self, PeerAddr, PeerID};
 use crate::transfer::{receiver, sender};
 
@@ -46,9 +47,9 @@ impl App {
 
         // Wait for a short duration to allow other threads to fully start up.
         thread::sleep(Duration::from_millis(20));
-        let ipc = IPCServer::new()?;
+        let api = Api::new(IPCServer::new()?);
 
-        for message in ipc.incoming_messages() {
+        for message in api.incoming_messages() {
             if let Err(e) = self.handle_ipc_message(message) {
                 elogln!("Failed to handle an ipc message: {e}");
             };
@@ -85,7 +86,7 @@ impl App {
                 None => msg.response("No peers found"),
             },
             Command::SendTo(peer_id, file_path) => {
-                match self.peer_discoverer.find_peer_addr_by_id(peer_id) {
+                match self.peer_discoverer.find_peer_addr_by_id(*peer_id) {
                     Some(addr) => sender::send_file_to(addr, file_path)
                         .or_else(|_| msg.response("Failed to send file: {e}")),
                     None => msg.response("No peers found that matches the given identifier"),
