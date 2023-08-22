@@ -66,11 +66,7 @@ impl App {
     }
 
     fn handle_api_message(&self, mut msg: Message) -> io::Result<()> {
-        let Some(cmd) = msg.command() else {
-            return Ok(());
-        };
-
-        match cmd {
+        match msg.command() {
             Command::MyID => msg.response(self.my_id),
             Command::MyAddr => msg.response(self.my_addr),
             Command::Peers => match self.peer_discoverer.get_discovered_peer_ids() {

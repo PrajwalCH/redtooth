@@ -84,9 +84,9 @@ impl Message {
         }
     }
 
-    /// Returns a command attached in a message, if available.
-    pub fn command(&self) -> Option<&Command> {
-        Some(&self.command)
+    /// Returns a command attached in a message.
+    pub fn command(&self) -> &Command {
+        &self.command
     }
 
     /// Sends a response to this message.
