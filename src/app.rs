@@ -60,8 +60,11 @@ impl App {
     fn spawn_file_receiver(&self) -> io::Result<()> {
         let receiving_addr = self.my_addr;
         let save_location = self.save_location.clone();
-        let builder = ThreadBuilder::new().name(String::from("file_receiver"));
-        builder.spawn(move || receiver::receive_files(receiving_addr, save_location))?;
+
+        ThreadBuilder::new()
+            .name(String::from("file_receiver"))
+            .spawn(move || receiver::receive_files(receiving_addr, save_location))?;
+
         Ok(())
     }
 
