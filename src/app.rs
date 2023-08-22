@@ -51,7 +51,7 @@ impl App {
 
         for message in api.incoming_messages() {
             if let Err(e) = self.handle_api_message(message) {
-                elogln!("Failed to handle an ipc message: {e}");
+                elogln!("Failed to handle an api message: {e}");
             };
         }
         Ok(())
