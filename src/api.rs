@@ -34,7 +34,7 @@ pub enum Command {
 ///
 /// By providing a message reader that implements the [`ReadMessage`] trait,
 /// the `Api` can fetch incoming messages from a specific connection or source.
-pub struct Api<R: ReadMessage> {
+pub struct Api<R> {
     message_reader: R,
 }
 
@@ -57,7 +57,7 @@ impl<R: ReadMessage> Api<R> {
 }
 
 /// An iterator over incoming messages to an [`Api`].
-pub struct IncomingMessages<'s, R: ReadMessage> {
+pub struct IncomingMessages<'s, R> {
     api: &'s Api<R>,
 }
 
