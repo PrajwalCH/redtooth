@@ -50,7 +50,7 @@ impl App {
         let api = Api::new(IPCServer::new()?);
 
         for message in api.incoming_messages() {
-            if let Err(e) = self.handle_ipc_message(message) {
+            if let Err(e) = self.handle_api_message(message) {
                 elogln!("Failed to handle an ipc message: {e}");
             };
         }
@@ -65,7 +65,7 @@ impl App {
         Ok(())
     }
 
-    fn handle_ipc_message(&self, mut msg: Message) -> io::Result<()> {
+    fn handle_api_message(&self, mut msg: Message) -> io::Result<()> {
         let Some(cmd) = msg.command() else {
             return Ok(());
         };
