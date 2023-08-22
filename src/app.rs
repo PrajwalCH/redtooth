@@ -1,8 +1,6 @@
-use std::env;
-use std::io;
 use std::path::PathBuf;
-use std::thread::{self, Builder as ThreadBuilder};
 use std::time::Duration;
+use std::{env, io, thread};
 
 use crate::api::{Api, Command, Message};
 use crate::discovery::PeerDiscoverer;
@@ -61,7 +59,7 @@ impl App {
         let receiving_addr = self.my_addr;
         let save_location = self.save_location.clone();
 
-        ThreadBuilder::new()
+        thread::Builder::new()
             .name(String::from("file_receiver"))
             .spawn(move || receiver::receive_files(receiving_addr, save_location))?;
 
