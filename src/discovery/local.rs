@@ -1,9 +1,8 @@
 //! A local peer discoverer.
 
-use std::io;
 use std::net::{Ipv4Addr, UdpSocket};
 use std::sync::{Arc, Mutex, TryLockError};
-use std::thread::Builder as ThreadBuilder;
+use std::{io, thread};
 
 use super::{Announcement, PeerMap, ThreadHandle};
 use crate::{elogln, logln};
@@ -15,8 +14,9 @@ const MULTICAST_PORT: u16 = 20581;
 
 /// Spawns a local server.
 pub fn spawn(peer_map: Arc<Mutex<PeerMap>>) -> io::Result<ThreadHandle> {
-    let builder = ThreadBuilder::new().name(String::from("local discovery"));
-    builder.spawn(move || discover_peers(peer_map))
+    thread::Builder::new()
+        .name(String::from("local_discovery"))
+        .spawn(move || discover_peers(peer_map))
 }
 
 /// Announces the peer to other instances of the local server.
