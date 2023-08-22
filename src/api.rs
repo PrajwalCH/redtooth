@@ -57,11 +57,11 @@ impl<R: ReadMessage> Api<R> {
 }
 
 /// An iterator over incoming messages to an [`Api`].
-pub struct IncomingMessages<'s, R> {
-    api: &'s Api<R>,
+pub struct IncomingMessages<'a, R> {
+    api: &'a Api<R>,
 }
 
-impl<'s, R: ReadMessage> Iterator for IncomingMessages<'s, R> {
+impl<'a, R: ReadMessage> Iterator for IncomingMessages<'a, R> {
     type Item = Message;
 
     fn next(&mut self) -> Option<Message> {
