@@ -5,6 +5,12 @@ use std::str::{self, Utf8Error};
 
 /// Represents a separator used to distinguish sections, such as headers and payload
 /// of the packet.
+///
+/// # Example
+///
+/// ```
+/// file_name=main.rs\n::payload
+/// ```
 const SECTIONS_SEPARATOR: &[u8; 2] = b"::";
 const HEADER_NAME_VALUE_SEPARATOR: char = '=';
 
