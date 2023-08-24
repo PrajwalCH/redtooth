@@ -55,12 +55,12 @@ impl<'p> Packet<'p> {
     /// with the same state as it was originally created using [`Packet::as_bytes`].
     pub fn from_bytes(bytes: &[u8]) -> Result<Packet, PacketParseError> {
         let separator_len = SECTIONS_SEPARATOR.len();
-        let separator_index = bytes
+        let separator_idx = bytes
             .windows(separator_len)
             .position(|bytes| bytes == SECTIONS_SEPARATOR);
 
         // If the sections separator is not present, then it is header only packet.
-        let headers = separator_index
+        let headers = separator_idx
             .map_or(str::from_utf8(bytes), |idx| str::from_utf8(&bytes[..idx]))
             .map_err(PacketParseError::InvalidUtf8)?
             .lines()
@@ -68,7 +68,7 @@ impl<'p> Packet<'p> {
             .map(|(name, value)| (name.to_string(), value.to_string()))
             .collect::<HashMap<String, String>>();
         let payload =
-            separator_index.and_then(|idx| bytes.get(idx + separator_len..).map(Cow::Borrowed));
+            separator_idx.and_then(|idx| bytes.get(idx + separator_len..).map(Cow::Borrowed));
 
         Ok(Packet { headers, payload })
     }
