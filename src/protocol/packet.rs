@@ -12,6 +12,13 @@ use std::str::{self, Utf8Error};
 /// file_name=main.rs\n::payload
 /// ```
 const SECTIONS_SEPARATOR: &[u8; 2] = b"::";
+/// Represents a separator used to separate header name and value on the packet.
+///
+/// # Example
+///
+/// ```
+/// file_name=main.rs
+/// ```
 const HEADER_NAME_VALUE_SEPARATOR: char = '=';
 
 /// Represents an error that can occur when extracting headers from the bytes.
