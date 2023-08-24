@@ -4,7 +4,7 @@ pub mod sender;
 use std::path::Path;
 use std::{fs, io, str};
 
-use crate::protocol::packet::{Packet, PacketParseError};
+use crate::protocol::packet::{InvalidHeaderSequence, Packet};
 
 /// A wrapper around [`Packet`] specialized for constructing a packet to send or receive files
 /// along with their associated metadata.
@@ -23,7 +23,7 @@ impl<'data> FilePacket<'data> {
     }
 
     /// Creates a new file packet by parsing the given bytes.
-    pub fn from_bytes(bytes: &[u8]) -> Result<FilePacket, PacketParseError> {
+    pub fn from_bytes(bytes: &[u8]) -> Result<FilePacket, InvalidHeaderSequence> {
         Ok(FilePacket(Packet::from_bytes(bytes)?))
     }
 

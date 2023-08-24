@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::{fmt, io};
 
-use crate::protocol::packet::{Packet, PacketParseError};
+use crate::protocol::packet::{InvalidHeaderSequence, Packet};
 use crate::protocol::{PeerAddr, PeerID};
 
 type PeerMap = HashMap<PeerID, PeerAddr>;
@@ -66,7 +66,7 @@ impl PeerDiscoverer {
 enum InvalidAnnouncement {
     MissingPeerID,
     MissingPeerAddr,
-    InvalidPacket(PacketParseError),
+    InvalidPacket(InvalidHeaderSequence),
 }
 
 impl fmt::Display for InvalidAnnouncement {

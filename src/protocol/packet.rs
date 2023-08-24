@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::fmt::{self, Write};
+use std::fmt::Write;
 use std::str::{self, Utf8Error};
 
 /// Represents a separator used to distinguish sections, such as headers and payload
@@ -8,24 +8,10 @@ use std::str::{self, Utf8Error};
 const SECTIONS_SEPARATOR: &[u8; 2] = b"::";
 const HEADER_NAME_VALUE_SEPARATOR: char = '=';
 
-/// Represents possible errors that can occur when reconstructing a new [`Packet`]
-/// from the bytes.
+/// Represents an error that can occur when extracting headers from the bytes.
 ///
 /// This error is returned from the [`Packet::from_bytes`].
-#[derive(Debug)]
-pub enum PacketParseError {
-    InvalidUtf8(Utf8Error),
-}
-
-impl fmt::Display for PacketParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use self::PacketParseError::*;
-
-        match self {
-            InvalidUtf8(e) => write!(f, "{e}"),
-        }
-    }
-}
+pub type InvalidHeaderSequence = Utf8Error;
 
 /// Represents a packet used for transferring any data along with the additional information.
 ///
@@ -53,7 +39,7 @@ impl<'p> Packet<'p> {
     ///
     /// This function attempts to reconstruct a new [`Packet`] from the provided bytes
     /// with the same state as it was originally created using [`Packet::as_bytes`].
-    pub fn from_bytes(bytes: &[u8]) -> Result<Packet, PacketParseError> {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Packet, InvalidHeaderSequence> {
         let separator_len = SECTIONS_SEPARATOR.len();
         let separator_idx = bytes
             .windows(separator_len)
@@ -61,8 +47,7 @@ impl<'p> Packet<'p> {
 
         // If the sections separator is not present, then it is header only packet.
         let headers = separator_idx
-            .map_or(str::from_utf8(bytes), |idx| str::from_utf8(&bytes[..idx]))
-            .map_err(PacketParseError::InvalidUtf8)?
+            .map_or(str::from_utf8(bytes), |idx| str::from_utf8(&bytes[..idx]))?
             .lines()
             .filter_map(|header| header.split_once(HEADER_NAME_VALUE_SEPARATOR))
             .map(|(name, value)| (name.to_string(), value.to_string()))
