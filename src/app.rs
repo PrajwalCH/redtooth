@@ -1,6 +1,7 @@
-use std::path::PathBuf;
+use std::io::{self, Error};
+use std::path::{Path, PathBuf};
 use std::time::Duration;
-use std::{env, io, thread};
+use std::{env, fs, thread};
 
 use crate::api::{Api, Command, Message};
 use crate::discovery::PeerDiscoverer;
@@ -9,21 +10,23 @@ use crate::ipc::IPCServer;
 use crate::protocol::{self, PeerAddr, PeerID};
 use crate::transfer::{receiver, sender};
 
+#[cfg(not(windows))]
+const HOME_ENV_KEY: &str = "HOME";
+#[cfg(windows)]
+const HOME_ENV_KEY: &str = "USERPROFILE";
+/// Directory where all the received files will live.
+const DIR_NAME: &str = env!("CARGO_PKG_NAME");
+
 pub struct App {
     my_id: PeerID,
     my_addr: PeerAddr,
     peer_discoverer: PeerDiscoverer,
-    /// Path where the received file will be saved.
-    save_location: PathBuf,
+    config: Config,
 }
 
 impl App {
     /// Creates a new instance of `App` with all the necessary setup.
     pub fn new() -> App {
-        let home_env_key = if cfg!(windows) { "USERPROFILE" } else { "HOME" };
-        let home_path = env::var(home_env_key).expect(
-            "env variable `HOME` for linux and `USERPROFILE` for windows should be available",
-        );
         let my_id = protocol::get_my_id();
         let my_addr = protocol::get_my_addr();
 
@@ -31,7 +34,7 @@ impl App {
             my_id,
             my_addr,
             peer_discoverer: PeerDiscoverer::new(my_id, my_addr),
-            save_location: PathBuf::from(home_path),
+            config: Config::default(),
         }
     }
 
@@ -39,6 +42,13 @@ impl App {
     ///
     /// **NOTE:** This function always blocks the current thread.
     pub fn run(&mut self) -> io::Result<()> {
+        let save_location_exists = self.config.save_location.try_exists().map_err(|err| {
+            Error::new(err.kind(), "failed to check the existence of save location")
+        })?;
+
+        if !save_location_exists {
+            fs::create_dir(&self.config.save_location)?;
+        }
         self.spawn_file_receiver()?;
         self.peer_discoverer.start()?;
         self.peer_discoverer.announce_peer()?;
@@ -57,7 +67,7 @@ impl App {
 
     fn spawn_file_receiver(&self) -> io::Result<()> {
         let receiving_addr = self.my_addr;
-        let save_location = self.save_location.clone();
+        let save_location = self.config.save_location.clone();
 
         thread::Builder::new()
             .name(String::from("file_receiver"))
@@ -89,6 +99,21 @@ impl App {
                     None => msg.response("No peers found that matches the given identifier"),
                 }
             }
+        }
+    }
+}
+
+struct Config {
+    /// Path where the received file will be saved.
+    save_location: PathBuf,
+}
+
+impl Default for Config {
+    fn default() -> Config {
+        let home = env::var(HOME_ENV_KEY).expect("your OS should set env variable {HOME_ENV_KEY}");
+
+        Config {
+            save_location: Path::new(&home).join(DIR_NAME),
         }
     }
 }
