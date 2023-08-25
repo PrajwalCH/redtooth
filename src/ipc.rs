@@ -1,4 +1,5 @@
-use std::io::{self, Read, Write};
+use std::fs;
+use std::io::{self, Error, ErrorKind, Read, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
 
 use crate::api::{Command, Message, ReadMessage};
@@ -12,7 +13,18 @@ pub struct IPCServer(UnixListener);
 impl IPCServer {
     /// Creates a new [IPCServer] bound to the [`SOCK_FILE_PATH`].
     pub fn new() -> io::Result<IPCServer> {
-        Ok(IPCServer(UnixListener::bind(SOCK_FILE_PATH)?))
+        let listener = UnixListener::bind(SOCK_FILE_PATH);
+
+        if !listener
+            .as_ref()
+            .is_err_and(|e| e.kind() == ErrorKind::AddrInUse)
+        {
+            Ok(IPCServer(listener?))
+        } else {
+            // Delete the old socket file and create the new one.
+            fs::remove_file(SOCK_FILE_PATH)?;
+            Ok(IPCServer(UnixListener::bind(SOCK_FILE_PATH)?))
+        }
     }
 }
 
@@ -26,8 +38,8 @@ impl ReadMessage for IPCServer {
         let mut request = String::new();
         stream.read_to_string(&mut request)?;
 
-        let command = parse_request(&request)
-            .ok_or(io::Error::new(io::ErrorKind::Other, "invalid command"))?;
+        let command =
+            parse_request(&request).ok_or(Error::new(ErrorKind::Other, "invalid command"))?;
         Ok(Message::new(command, Box::new(stream)))
     }
 }
