@@ -27,8 +27,8 @@ impl PeerDiscoverer {
         }
     }
 
-    /// Starts a server for discovering peers on either local or global or both networks.
-    pub fn start(&mut self) -> io::Result<()> {
+    /// Spawns a server for discovering peers on either local or global or both networks.
+    pub fn spawn(&mut self) -> io::Result<()> {
         let thread_handle = local::spawn(Arc::clone(&self.peers))?;
         self.local_server_handle = Some(thread_handle);
         Ok(())

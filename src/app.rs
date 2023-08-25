@@ -50,7 +50,7 @@ impl App {
             fs::create_dir(&self.config.save_location)?;
         }
         self.spawn_file_receiver()?;
-        self.peer_discoverer.start()?;
+        self.peer_discoverer.spawn()?;
         self.peer_discoverer.announce_peer()?;
 
         // Wait for a short duration to allow other threads to fully start up.
