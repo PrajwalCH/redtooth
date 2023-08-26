@@ -57,9 +57,9 @@ impl App {
         thread::sleep(Duration::from_millis(20));
         let api = Api::new(IPCServer::new()?);
 
-        for message in api.incoming_messages() {
-            if let Err(e) = self.handle_api_message(message) {
-                elogln!("Failed to handle an api message: {e}");
+        for request in api.incoming_requests() {
+            if let Err(e) = self.handle_api_request(request) {
+                elogln!("Failed to handle an api request: {e}");
             };
         }
         Ok(())
@@ -76,27 +76,27 @@ impl App {
         Ok(())
     }
 
-    fn handle_api_message(&self, mut msg: Request) -> io::Result<()> {
-        match msg.command() {
-            Command::MyID => msg.response(self.my_id),
-            Command::MyAddr => msg.response(self.my_addr),
+    fn handle_api_request(&self, mut req: Request) -> io::Result<()> {
+        match req.command() {
+            Command::MyID => req.response(self.my_id),
+            Command::MyAddr => req.response(self.my_addr),
             Command::Peers => match self.peer_discoverer.get_discovered_peer_ids() {
                 Some(ids) => {
                     let ids = ids.iter().map(|&id| format!("{id}\n")).collect::<String>();
-                    msg.response(ids)
+                    req.response(ids)
                 }
-                None => msg.response("No peers found"),
+                None => req.response("No peers found"),
             },
             Command::Send(file_path) => match self.peer_discoverer.get_discovered_peer_addrs() {
                 Some(addrs) => sender::send_file_to_all(&addrs, file_path)
-                    .or_else(|_| msg.response("Failed to send file")),
-                None => msg.response("No peers found"),
+                    .or_else(|_| req.response("Failed to send file")),
+                None => req.response("No peers found"),
             },
             Command::SendTo(peer_id, file_path) => {
                 match self.peer_discoverer.find_peer_addr_by_id(*peer_id) {
                     Some(addr) => sender::send_file_to(addr, file_path)
-                        .or_else(|_| msg.response("Failed to send file: {e}")),
-                    None => msg.response("No peers found that matches the given identifier"),
+                        .or_else(|_| req.response("Failed to send file: {e}")),
+                    None => req.response("No peers found that matches the given identifier"),
                 }
             }
         }

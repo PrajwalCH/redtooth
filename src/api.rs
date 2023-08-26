@@ -3,22 +3,21 @@ use std::io::{self, Write};
 
 use crate::protocol::PeerID;
 
-/// The `ReadMessage` trait allows for reading a message from a connection.
+/// The `ReadRequest` trait allows for reading a request from a connection.
 ///
-/// Implementors of the `ReadMessage` trait are called 'message readers'
-/// and are defined by one required method, [`read_message()`].
+/// Implementors of the `ReadRequest` trait are called 'request readers'
+/// and are defined by one required method, [`read_request()`].
 ///
-/// Each call to [`read_message()`] will attempt to read and return a message
+/// Each call to [`read_request()`] will attempt to read and return a request
 /// from a connection.
 ///
-/// [`read_message()`]: ReadMessage::read_message
-pub trait ReadMessage {
-    /// Attempts to read and return a new message from a connection.
+/// [`read_request()`]: ReadRequest::read_request
+pub trait ReadRequest {
+    /// Attempts to read and return a new request from a connection.
     ///
     /// This function may or may not block the calling thread while waiting
-    /// for a connection to be established. When established, it reads a message
-    /// and returns it.
-    fn read_message(&self) -> io::Result<Request>;
+    /// for a connection to be established.
+    fn read_request(&self) -> io::Result<Request>;
 }
 
 /// Represents a command sent to API.
@@ -32,40 +31,40 @@ pub enum Command {
 
 /// The `Api` structure allows for creating a different kind of APIs (e.g., IPC, HTTP, etc.).
 ///
-/// By providing a message reader that implements the [`ReadMessage`] trait,
-/// the `Api` can fetch incoming messages from a specific connection or source.
+/// By providing a request reader that implements the [`ReadRequest`] trait,
+/// the `Api` can fetch incoming requests from a specific connection or source.
 pub struct Api<R> {
-    message_reader: R,
+    request_reader: R,
 }
 
-impl<R: ReadMessage> Api<R> {
-    /// Creates a new [`Api`] with the given message reader from where
-    /// it can read a message.
-    pub fn new(message_reader: R) -> Api<R> {
-        Api { message_reader }
+impl<R: ReadRequest> Api<R> {
+    /// Creates a new [`Api`] with the given request reader from where
+    /// it can read a request.
+    pub fn new(request_reader: R) -> Api<R> {
+        Api { request_reader }
     }
 
-    /// Returns an iterator over incoming messages.
-    pub fn incoming_messages(&self) -> IncomingMessages<R> {
-        IncomingMessages { api: self }
+    /// Returns an iterator over incoming requests.
+    pub fn incoming_requests(&self) -> IncomingRequests<R> {
+        IncomingRequests { api: self }
     }
 
-    /// Receives the message from the given reader and returns it.
-    fn recv_message(&self) -> io::Result<Request> {
-        self.message_reader.read_message()
+    /// Receives the request from the given reader and returns it.
+    fn recv_request(&self) -> io::Result<Request> {
+        self.request_reader.read_request()
     }
 }
 
-/// An iterator over incoming messages to an [`Api`].
-pub struct IncomingMessages<'a, R> {
+/// An iterator over incoming requests to an [`Api`].
+pub struct IncomingRequests<'a, R> {
     api: &'a Api<R>,
 }
 
-impl<'a, R: ReadMessage> Iterator for IncomingMessages<'a, R> {
+impl<'a, R: ReadRequest> Iterator for IncomingRequests<'a, R> {
     type Item = Request;
 
     fn next(&mut self) -> Option<Request> {
-        self.api.recv_message().ok()
+        self.api.recv_request().ok()
     }
 }
 
