@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::{env, fs, thread};
 
-use crate::api::{Api, Command, Message};
+use crate::api::{Api, Command, Request};
 use crate::discovery::PeerDiscoverer;
 use crate::elogln;
 use crate::ipc::IPCServer;
@@ -76,7 +76,7 @@ impl App {
         Ok(())
     }
 
-    fn handle_api_message(&self, mut msg: Message) -> io::Result<()> {
+    fn handle_api_message(&self, mut msg: Request) -> io::Result<()> {
         match msg.command() {
             Command::MyID => msg.response(self.my_id),
             Command::MyAddr => msg.response(self.my_addr),

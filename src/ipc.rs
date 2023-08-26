@@ -2,7 +2,7 @@ use std::fs;
 use std::io::{self, Error, ErrorKind, Read, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
 
-use crate::api::{Command, Message, ReadMessage};
+use crate::api::{Command, ReadMessage, Request};
 use crate::protocol::PeerID;
 
 pub const SOCK_FILE_PATH: &str = "/tmp/rapi.sock";
@@ -33,14 +33,14 @@ impl ReadMessage for IPCServer {
     ///
     /// This function will block the calling thread until a new connection is established.
     /// When established, it reads the message and returns it.
-    fn read_message(&self) -> io::Result<Message> {
+    fn read_message(&self) -> io::Result<Request> {
         let mut stream = self.0.accept().map(|(stream, _)| stream)?;
         let mut request = String::new();
         stream.read_to_string(&mut request)?;
 
         let command =
             parse_request(&request).ok_or(Error::new(ErrorKind::Other, "invalid command"))?;
-        Ok(Message::new(command, Box::new(stream)))
+        Ok(Request::new(command, Box::new(stream)))
     }
 }
 

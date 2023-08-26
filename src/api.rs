@@ -18,7 +18,7 @@ pub trait ReadMessage {
     /// This function may or may not block the calling thread while waiting
     /// for a connection to be established. When established, it reads a message
     /// and returns it.
-    fn read_message(&self) -> io::Result<Message>;
+    fn read_message(&self) -> io::Result<Request>;
 }
 
 /// Represents a command sent to API.
@@ -51,7 +51,7 @@ impl<R: ReadMessage> Api<R> {
     }
 
     /// Receives the message from the given reader and returns it.
-    fn recv_message(&self) -> io::Result<Message> {
+    fn recv_message(&self) -> io::Result<Request> {
         self.message_reader.read_message()
     }
 }
@@ -62,34 +62,34 @@ pub struct IncomingMessages<'a, R> {
 }
 
 impl<'a, R: ReadMessage> Iterator for IncomingMessages<'a, R> {
-    type Item = Message;
+    type Item = Request;
 
-    fn next(&mut self) -> Option<Message> {
+    fn next(&mut self) -> Option<Request> {
         self.api.recv_message().ok()
     }
 }
 
-/// Represents a message sent to an API.
-pub struct Message {
+/// Represents a request sent to an API.
+pub struct Request {
     command: Command,
     response_writer: Box<dyn Write>,
 }
 
-impl Message {
-    /// Creates a new instance of a message.
-    pub fn new(command: Command, response_writer: Box<dyn Write>) -> Message {
-        Message {
+impl Request {
+    /// Creates a new instance of a request.
+    pub fn new(command: Command, response_writer: Box<dyn Write>) -> Request {
+        Request {
             command,
             response_writer,
         }
     }
 
-    /// Returns a command attached in a message.
+    /// Returns a command attached in a request.
     pub fn command(&self) -> &Command {
         &self.command
     }
 
-    /// Sends a response to this message.
+    /// Sends a response to this request.
     pub fn response(&mut self, data: impl fmt::Display) -> io::Result<()> {
         write!(self.response_writer, "{data}")
     }
