@@ -1,21 +1,14 @@
 use std::io::{self, Error};
-use std::path::{Path, PathBuf};
 use std::time::Duration;
-use std::{env, fs, thread};
+use std::{fs, thread};
 
 use crate::api::{Api, Message, Request};
+use crate::config::Config;
 use crate::discovery::PeerDiscovery;
 use crate::elogln;
 use crate::ipc::IPCServer;
 use crate::protocol::{self, PeerAddr, PeerID};
 use crate::transfer::{receiver, sender};
-
-#[cfg(not(windows))]
-const HOME_ENV_KEY: &str = "HOME";
-#[cfg(windows)]
-const HOME_ENV_KEY: &str = "USERPROFILE";
-/// Directory where all the received files will live.
-const DIR_NAME: &str = env!("CARGO_PKG_NAME");
 
 pub struct App {
     my_id: PeerID,
@@ -99,22 +92,6 @@ impl App {
                     None => req.response("No peers found that matches the given identifier"),
                 }
             }
-        }
-    }
-}
-
-struct Config {
-    /// Path where the received file will be saved.
-    save_location: PathBuf,
-}
-
-impl Default for Config {
-    fn default() -> Config {
-        let home = env::var(HOME_ENV_KEY)
-            .unwrap_or_else(|_| panic!("your OS should set env variable {HOME_ENV_KEY}"));
-
-        Config {
-            save_location: Path::new(&home).join(DIR_NAME),
         }
     }
 }

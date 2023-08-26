@@ -1,6 +1,7 @@
 mod api;
 mod app;
 mod cli;
+mod config;
 mod discovery;
 mod interface;
 mod ipc;
