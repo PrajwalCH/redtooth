@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::{env, fs, thread};
 
-use crate::api::{Api, Command, Request};
+use crate::api::{Api, Message, Request};
 use crate::discovery::PeerDiscoverer;
 use crate::elogln;
 use crate::ipc::IPCServer;
@@ -77,22 +77,22 @@ impl App {
     }
 
     fn handle_api_request(&self, mut req: Request) -> io::Result<()> {
-        match req.command() {
-            Command::MyID => req.response(self.my_id),
-            Command::MyAddr => req.response(self.my_addr),
-            Command::Peers => match self.peer_discoverer.get_discovered_peer_ids() {
+        match req.message() {
+            Message::MyID => req.response(self.my_id),
+            Message::MyAddr => req.response(self.my_addr),
+            Message::Peers => match self.peer_discoverer.get_discovered_peer_ids() {
                 Some(ids) => {
                     let ids = ids.iter().map(|&id| format!("{id}\n")).collect::<String>();
                     req.response(ids)
                 }
                 None => req.response("No peers found"),
             },
-            Command::Send(file_path) => match self.peer_discoverer.get_discovered_peer_addrs() {
+            Message::Send(file_path) => match self.peer_discoverer.get_discovered_peer_addrs() {
                 Some(addrs) => sender::send_file_to_all(&addrs, file_path)
                     .or_else(|_| req.response("Failed to send file")),
                 None => req.response("No peers found"),
             },
-            Command::SendTo(peer_id, file_path) => {
+            Message::SendTo(peer_id, file_path) => {
                 match self.peer_discoverer.find_peer_addr_by_id(*peer_id) {
                     Some(addr) => sender::send_file_to(addr, file_path)
                         .or_else(|_| req.response("Failed to send file: {e}")),

@@ -20,8 +20,8 @@ pub trait ReadRequest {
     fn read_request(&self) -> io::Result<Request>;
 }
 
-/// Represents a command sent to API.
-pub enum Command {
+/// Represents a message sent to API.
+pub enum Message {
     MyID,
     MyAddr,
     Peers,
@@ -70,22 +70,22 @@ impl<'a, R: ReadRequest> Iterator for IncomingRequests<'a, R> {
 
 /// Represents a request sent to an API.
 pub struct Request {
-    command: Command,
+    message: Message,
     response_writer: Box<dyn Write>,
 }
 
 impl Request {
     /// Creates a new instance of a request.
-    pub fn new(command: Command, response_writer: Box<dyn Write>) -> Request {
+    pub fn new(message: Message, response_writer: Box<dyn Write>) -> Request {
         Request {
-            command,
+            message,
             response_writer,
         }
     }
 
-    /// Returns a command attached in a request.
-    pub fn command(&self) -> &Command {
-        &self.command
+    /// Returns a message attached in a request.
+    pub fn message(&self) -> &Message {
+        &self.message
     }
 
     /// Sends a response to this request.

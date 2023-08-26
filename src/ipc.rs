@@ -2,7 +2,7 @@ use std::fs;
 use std::io::{self, Error, ErrorKind, Read, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
 
-use crate::api::{Command, ReadRequest, Request};
+use crate::api::{Message, ReadRequest, Request};
 use crate::protocol::PeerID;
 
 pub const SOCK_FILE_PATH: &str = "/tmp/rapi.sock";
@@ -44,35 +44,35 @@ impl ReadRequest for IPCServer {
     }
 }
 
-fn parse_request(req: &str) -> Option<Command> {
+fn parse_request(req: &str) -> Option<Message> {
     let (cmd, args) = req
         .strip_prefix('/')
         .and_then(|v| v.split_once(' ').or(Some((v, ""))))?;
 
     match cmd {
-        "myid" => Some(Command::MyID),
-        "myaddr" => Some(Command::MyAddr),
-        "peers" => Some(Command::Peers),
-        "send" => Some(Command::Send(args.to_string())),
+        "myid" => Some(Message::MyID),
+        "myaddr" => Some(Message::MyAddr),
+        "peers" => Some(Message::Peers),
+        "send" => Some(Message::Send(args.to_string())),
         "send_to" => {
             let args = args.split_once(' ')?;
             let peer_id = args.0.parse::<PeerID>().ok()?;
             let file_name = args.1.to_string();
-            Some(Command::SendTo(peer_id, file_name))
+            Some(Message::SendTo(peer_id, file_name))
         }
         _ => None,
     }
 }
 
-pub fn send_request(c: Command) -> io::Result<String> {
+pub fn send_request(msg: Message) -> io::Result<String> {
     let mut stream = UnixStream::connect(SOCK_FILE_PATH)?;
 
-    match c {
-        Command::MyID => write!(stream, "/myid")?,
-        Command::MyAddr => write!(stream, "/myaddr")?,
-        Command::Peers => write!(stream, "/peers")?,
-        Command::Send(file_name) => write!(stream, "/send {file_name}")?,
-        Command::SendTo(peer_id, file_name) => write!(stream, "/send_to {peer_id} {file_name}")?,
+    match msg {
+        Message::MyID => write!(stream, "/myid")?,
+        Message::MyAddr => write!(stream, "/myaddr")?,
+        Message::Peers => write!(stream, "/peers")?,
+        Message::Send(file_name) => write!(stream, "/send {file_name}")?,
+        Message::SendTo(peer_id, file_name) => write!(stream, "/send_to {peer_id} {file_name}")?,
     };
     let mut response = String::new();
     stream.read_to_string(&mut response)?;
