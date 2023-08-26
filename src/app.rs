@@ -4,7 +4,7 @@ use std::time::Duration;
 use std::{env, fs, thread};
 
 use crate::api::{Api, Message, Request};
-use crate::discovery::PeerDiscoverer;
+use crate::discovery::PeerDiscovery;
 use crate::elogln;
 use crate::ipc::IPCServer;
 use crate::protocol::{self, PeerAddr, PeerID};
@@ -20,7 +20,7 @@ const DIR_NAME: &str = env!("CARGO_PKG_NAME");
 pub struct App {
     my_id: PeerID,
     my_addr: PeerAddr,
-    peer_discoverer: PeerDiscoverer,
+    peer_discovery: PeerDiscovery,
     config: Config,
 }
 
@@ -33,7 +33,7 @@ impl App {
         App {
             my_id,
             my_addr,
-            peer_discoverer: PeerDiscoverer::new(my_id, my_addr),
+            peer_discovery: PeerDiscovery::new(my_id, my_addr),
             config: Config::default(),
         }
     }
@@ -50,8 +50,8 @@ impl App {
             fs::create_dir(&self.config.save_location)?;
         }
         self.spawn_file_receiver()?;
-        self.peer_discoverer.spawn()?;
-        self.peer_discoverer.announce_peer()?;
+        self.peer_discovery.spawn()?;
+        self.peer_discovery.announce_peer()?;
 
         // Wait for a short duration to allow other threads to fully start up.
         thread::sleep(Duration::from_millis(20));
@@ -80,20 +80,20 @@ impl App {
         match req.message() {
             Message::MyID => req.response(self.my_id),
             Message::MyAddr => req.response(self.my_addr),
-            Message::Peers => match self.peer_discoverer.get_discovered_peer_ids() {
+            Message::Peers => match self.peer_discovery.get_discovered_peer_ids() {
                 Some(ids) => {
                     let ids = ids.iter().map(|&id| format!("{id}\n")).collect::<String>();
                     req.response(ids)
                 }
                 None => req.response("No peers found"),
             },
-            Message::Send(file_path) => match self.peer_discoverer.get_discovered_peer_addrs() {
+            Message::Send(file_path) => match self.peer_discovery.get_discovered_peer_addrs() {
                 Some(addrs) => sender::send_file_to_all(&addrs, file_path)
                     .or_else(|_| req.response("Failed to send file")),
                 None => req.response("No peers found"),
             },
             Message::SendTo(peer_id, file_path) => {
-                match self.peer_discoverer.find_peer_addr_by_id(*peer_id) {
+                match self.peer_discovery.find_peer_addr_by_id(*peer_id) {
                     Some(addr) => sender::send_file_to(addr, file_path)
                         .or_else(|_| req.response("Failed to send file: {e}")),
                     None => req.response("No peers found that matches the given identifier"),
