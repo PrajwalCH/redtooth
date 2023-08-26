@@ -110,7 +110,8 @@ struct Config {
 
 impl Default for Config {
     fn default() -> Config {
-        let home = env::var(HOME_ENV_KEY).expect("your OS should set env variable {HOME_ENV_KEY}");
+        let home = env::var(HOME_ENV_KEY)
+            .unwrap_or_else(|_| panic!("your OS should set env variable {HOME_ENV_KEY}"));
 
         Config {
             save_location: Path::new(&home).join(DIR_NAME),
