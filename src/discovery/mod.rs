@@ -12,11 +12,9 @@ use crate::protocol::{PeerAddr, PeerID};
 type PeerMap = HashMap<PeerID, PeerAddr>;
 type ThreadHandle = JoinHandle<io::Result<()>>;
 
-#[allow(dead_code)]
 pub struct PeerDiscoverer {
     peers: Arc<Mutex<PeerMap>>,
     announcement_pkt: Vec<u8>,
-    local_server_handle: Option<ThreadHandle>,
 }
 
 impl PeerDiscoverer {
@@ -24,14 +22,12 @@ impl PeerDiscoverer {
         Self {
             peers: Arc::new(Mutex::new(PeerMap::new())),
             announcement_pkt: Announcement::new(id, addr).as_bytes(),
-            local_server_handle: None,
         }
     }
 
     /// Spawns a server for discovering peers on either local or global or both networks.
     pub fn spawn(&mut self) -> io::Result<()> {
-        let thread_handle = local::spawn(Arc::clone(&self.peers))?;
-        self.local_server_handle = Some(thread_handle);
+        local::spawn(Arc::clone(&self.peers))?;
         Ok(())
     }
 
